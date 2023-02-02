@@ -1,4 +1,5 @@
 pub mod style_structs;
+pub mod ui_bundle;
 
 use bevy::prelude::*;
 
