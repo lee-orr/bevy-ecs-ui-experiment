@@ -1,69 +1,62 @@
-use std::marker::PhantomData;
 use std::hash::Hash;
+use std::marker::PhantomData;
 
-use bevy::{ui::BackgroundColor, prelude::{Component, Color, Handle}, text::TextStyle};
+use bevy::{
+    prelude::{info, Color, Component, Handle},
+    text::{Font, TextStyle},
+    ui::*,
+};
 
-pub trait StyleElementWrapper: Clone {
+pub trait StyleComponentApplier<Inner: Default> {
+    fn get_component<T: FnMut(&mut Inner) -> ()>(self, apply: T) -> Self;
+}
 
-    type StyleComponent;
-    
-    fn apply(&self, style: Self::StyleComponent) -> Self::StyleComponent;
-    fn wrap(&self) -> Styling<Self::StyleComponent, Self> where Self: Sized {
-        Styling {
-            inner: self.clone(),
-            _phantom: PhantomData
-        }
+pub trait BgColor: StyleComponentApplier<BackgroundColor> + Sized {
+    fn bg(mut self, color: Color) -> Self {
+        self.get_component(move |v| {
+            info!("Setting background color {v:?} to {color:?}");
+            v.0 = color;
+            info!("set to {v:?}")
+        })
     }
 }
 
-#[derive(Component, PartialEq, Eq, Hash)]
-pub struct Styling<StyleComponent, StyleElement> {
-    inner: StyleElement,
-    _phantom: PhantomData<StyleComponent>
-}
+impl<T: StyleComponentApplier<BackgroundColor> + Sized> BgColor for T {}
 
-#[derive(Clone)]
-pub struct BgColor(pub Color);
-
-#[derive(Clone)]
-pub struct TextColor(pub Color);
-
-#[derive(Clone)]
-pub struct Font(pub Handle<bevy::prelude::Font>);
-
-#[derive(Clone)]
-pub struct FontSize(pub f32);
-
-impl StyleElementWrapper for BgColor{
-    type StyleComponent = BackgroundColor;
-
-
-    fn apply(&self, mut style: BackgroundColor) -> BackgroundColor {
-        style.0 = self.0;
-        style
+pub trait TextStyling: StyleComponentApplier<TextStyle> + Sized {
+    fn text_color(mut self, color: Color) -> Self {
+        self.get_component(move |v| v.color = color)
+    }
+    fn font(mut self, font: Handle<Font>) -> Self {
+        self.get_component(move |v| v.font = font.clone())
+    }
+    fn font_size(mut self, size: f32) -> Self {
+        self.get_component(move |v| v.font_size = size)
     }
 }
 
-impl StyleElementWrapper for TextColor{
-    type StyleComponent = TextStyle;
-    fn apply(&self, mut style: TextStyle) -> TextStyle {
-        style.color = self.0;
-        style
+pub trait Layout: StyleComponentApplier<Style> + Sized {
+    fn display(mut self, val: Display) -> Self {
+        self.get_component(move |v| v.display = val)
+    }
+    fn position_type(mut self, val: PositionType) -> Self {
+        self.get_component(move |v| v.position_type = val)
+    }
+    fn direction(mut self, val: Direction) -> Self {
+        self.get_component(move |v| v.direction = val)
+    }
+
+    fn flex_direction(mut self, val: FlexDirection) -> Self {
+        self.get_component(move |v| v.flex_direction = val)
+    }
+
+    fn flex_wrap(mut self, val: FlexWrap) -> Self {
+        self.get_component(move |v| v.flex_wrap = val)
+    }
+
+    fn size(mut self, val: Size) -> Self {
+        self.get_component(move |v| v.size = val)
     }
 }
 
-impl StyleElementWrapper for Font{
-    type StyleComponent = TextStyle;
-    fn apply(&self, mut style: TextStyle) -> TextStyle {
-        style.font = self.0.clone();
-        style
-    }
-}
-
-impl StyleElementWrapper for FontSize{
-    type StyleComponent = TextStyle;
-    fn apply(&self, mut style: TextStyle) -> TextStyle {
-        style.font_size = self.0;
-        style
-    }
-}
+impl<T: StyleComponentApplier<Style> + Sized> Layout for T {}
