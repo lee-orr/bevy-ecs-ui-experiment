@@ -2,7 +2,7 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 
 use bevy::{
-    prelude::{info, Color, Component, Handle},
+    prelude::{info, Color, Component, Handle, Visibility},
     text::{Font, TextStyle},
     ui::*,
 };
@@ -54,9 +54,99 @@ pub trait Layout: StyleComponentApplier<Style> + Sized {
         self.get_component(move |v| v.flex_wrap = val)
     }
 
+    fn align_items(mut self, val: AlignItems) -> Self {
+        self.get_component(move |v| v.align_items = val)
+    }
+
+    fn align_self(mut self, val: AlignSelf) -> Self {
+        self.get_component(move |v| v.align_self = val)
+    }
+
+    fn align_content(mut self, val: AlignContent) -> Self {
+        self.get_component(move |v| v.align_content = val)
+    }
+
+    fn justify_content(mut self, val: JustifyContent) -> Self {
+        self.get_component(move |v| v.justify_content = val)
+    }
+
+    fn position(mut self, val: UiRect) -> Self {
+        self.get_component(move |v| v.position = val)
+    }
+
+    fn margin(mut self, val: UiRect) -> Self {
+        self.get_component(move |v| v.margin = val)
+    }
+
+    fn padding(mut self, val: UiRect) -> Self {
+        self.get_component(move |v| v.padding = val)
+    }
+
+    fn border(mut self, val: UiRect) -> Self {
+        self.get_component(move |v| v.border = val)
+    }
+
+    fn flex_grow(mut self, val: f32) -> Self {
+        self.get_component(move |v| v.flex_grow = val)
+    }
+
+    fn flex_shrink(mut self, val: f32) -> Self {
+        self.get_component(move |v| v.flex_shrink = val)
+    }
+
+    fn flex_basis(mut self, val: Val) -> Self {
+        self.get_component(move |v| v.flex_basis = val)
+    }
+
     fn size(mut self, val: Size) -> Self {
         self.get_component(move |v| v.size = val)
+    }
+
+    fn min_size(mut self, val: Size) -> Self {
+        self.get_component(move |v| v.min_size = val)
+    }
+
+    fn max_size(mut self, val: Size) -> Self {
+        self.get_component(move |v| v.max_size = val)
+    }
+
+    fn aspect_ratio(mut self, val: Option<f32>) -> Self {
+        self.get_component(move |v| v.aspect_ratio = val)
+    }
+
+    fn overflow(mut self, val: Overflow) -> Self {
+        self.get_component(move |v| v.overflow = val)
+    }
+    fn gap(mut self, val: Size) -> Self {
+        self.get_component(move |v| v.gap = val)
     }
 }
 
 impl<T: StyleComponentApplier<Style> + Sized> Layout for T {}
+
+pub trait FocusPolicyApplier: StyleComponentApplier<FocusPolicy> + Sized {
+    fn focus_policy(mut self, val: FocusPolicy) -> Self {
+        self.get_component(move |v| v.clone_from(&val))
+    }
+}
+
+impl<T: StyleComponentApplier<FocusPolicy> + Sized> FocusPolicyApplier for T {}
+
+pub trait ZIndexApplier: StyleComponentApplier<ZIndex> + Sized {
+    fn z_index(mut self, val: ZIndex) -> Self {
+        self.get_component(move |v| {
+            v.clone_from(&val);
+        })
+    }
+}
+
+impl<T: StyleComponentApplier<ZIndex> + Sized> ZIndexApplier for T {}
+pub trait VisibilityApplier: StyleComponentApplier<Visibility> + Sized {
+    fn z_index(mut self, val: Visibility) -> Self {
+        self.get_component(move |v| {
+            v.clone_from(&val);
+        })
+    }
+}
+
+impl<T: StyleComponentApplier<Visibility> + Sized> VisibilityApplier for T {}

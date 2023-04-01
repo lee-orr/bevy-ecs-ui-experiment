@@ -1,6 +1,6 @@
 use bevy::{
-    prelude::{info, NodeBundle},
-    ui::{BackgroundColor, Style},
+    prelude::{info, NodeBundle, Visibility},
+    ui::{BackgroundColor, FocusPolicy, Style, ZIndex},
 };
 
 use crate::{style_structs::StyleComponentApplier, InternalUiSpawner};
@@ -16,6 +16,27 @@ impl StyleComponentApplier<BackgroundColor> for NodeBundle {
 impl StyleComponentApplier<Style> for NodeBundle {
     fn get_component<T: FnMut(&mut Style) -> ()>(mut self, mut apply: T) -> Self {
         apply(&mut self.style);
+        self
+    }
+}
+
+impl StyleComponentApplier<FocusPolicy> for NodeBundle {
+    fn get_component<T: FnMut(&mut FocusPolicy) -> ()>(mut self, mut apply: T) -> Self {
+        apply(&mut self.focus_policy);
+        self
+    }
+}
+
+impl StyleComponentApplier<ZIndex> for NodeBundle {
+    fn get_component<T: FnMut(&mut ZIndex) -> ()>(mut self, mut apply: T) -> Self {
+        apply(&mut self.z_index);
+        self
+    }
+}
+
+impl StyleComponentApplier<Visibility> for NodeBundle {
+    fn get_component<T: FnMut(&mut Visibility) -> ()>(mut self, mut apply: T) -> Self {
+        apply(&mut self.visibility);
         self
     }
 }
