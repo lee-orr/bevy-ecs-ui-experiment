@@ -20,19 +20,18 @@ fn setup(mut commands: Commands, assets: ResMut<AssetServer>) {
                 .bg(Color::rgb(1., 0.5, 0.2))
                 .size(Size::all(Val::Px(400.)))
                 .with_children(|p| {
-                    p.spawn(
-                        (TextBundle {
-                            text: Text::from_section(
-                                "test",
-                                TextStyle {
-                                    font_size: 30.,
-                                    font: font.clone(),
-                                    color: Color::PURPLE,
-                                },
-                            ),
-                            ..default()
-                        }),
-                    );
+                    p.text("test!").text_color(Color::GREEN).font_size(40.).font(font.clone());
+                    p.spawn(TextBundle {
+                        text: Text::from_section(
+                            "test",
+                            TextStyle {
+                                font_size: 30.,
+                                font: font.clone(),
+                                color: Color::PURPLE,
+                            },
+                        ),
+                        ..default()
+                    });
                     p.spawn(NodeBundle {
                         style: Style {
                             size: Size::all(Val::Px(50.)),

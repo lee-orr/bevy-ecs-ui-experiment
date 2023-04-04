@@ -1,13 +1,8 @@
-use bevy::log;
 use bevy::{ecs::system::EntityCommands, prelude::*};
-use std::hash::Hash;
-use std::{fmt::Debug, marker::PhantomData};
 
-use tuple_utils::*;
+use std::marker::PhantomData;
 
-use crate::style_structs::StyleComponentApplier;
-
-use ui_id::*;
+use crate::{style_structs::StyleComponentApplier, TextBundleBuilder};
 
 // #[derive(Bundle)]
 // pub struct UiBundle<Element: Component + Clone, StyleBundle: Bundle> {
@@ -57,7 +52,7 @@ impl<
         S: InternalUiSpawner<'w, 's>,
     > StyleComponentApplier<Inner> for UiComponent<'w, 's, 'a, Bg, S>
 {
-    fn get_component<T: FnMut(&mut Inner) -> ()>(mut self, apply: T) -> Self {
+    fn get_component<T: FnMut(&mut Inner)>(mut self, apply: T) -> Self {
         let value = self.value.clone();
         self.value = value.get_component(apply);
         self
@@ -118,6 +113,14 @@ pub trait InternalUiSpawner<'w, 's>: Sized {
 
     fn node<'a>(&'a mut self) -> UiComponent<'w, 's, 'a, NodeBundle, Self> {
         UiComponent::new(NodeBundle::default(), self)
+    }
+
+    fn text<'a>(&'a mut self, text: impl Into<String>) -> UiComponent<'w, 's, 'a, TextBundle, Self> {
+        UiComponent::new(TextBundle { text: Text::from_section(text, TextStyle::default()), ..Default::default() }, self)
+    }
+
+    fn raw_text<'a>(&'a mut self) -> UiComponent<'w, 's, 'a, TextBundle, Self> {
+        UiComponent::new(TextBundle::default(), self)
     }
 
     // fn ui_root<'a>(&'a mut self) -> UiComponent<'w, 's, 'a, UiRoot, Self>
@@ -199,8 +202,8 @@ impl<'w, 's, 'a, T: UiBundleGenerator, S: InternalUiSpawner<'w, 's>> Drop
 }
 
 pub mod ui_id {
+    use std::fmt::Debug;
     use std::hash::Hash;
-    use std::{fmt::Debug, marker::PhantomData};
 
     use bevy::prelude::Component;
 

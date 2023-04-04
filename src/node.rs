@@ -3,10 +3,10 @@ use bevy::{
     ui::{BackgroundColor, FocusPolicy, Style, ZIndex},
 };
 
-use crate::{style_structs::StyleComponentApplier, InternalUiSpawner};
+use crate::style_structs::StyleComponentApplier;
 
 impl StyleComponentApplier<BackgroundColor> for NodeBundle {
-    fn get_component<T: FnMut(&mut BackgroundColor) -> ()>(mut self, mut apply: T) -> Self {
+    fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {
         info!("Dispatching background color...");
         apply(&mut self.background_color);
         self
@@ -14,28 +14,28 @@ impl StyleComponentApplier<BackgroundColor> for NodeBundle {
 }
 
 impl StyleComponentApplier<Style> for NodeBundle {
-    fn get_component<T: FnMut(&mut Style) -> ()>(mut self, mut apply: T) -> Self {
+    fn get_component<T: FnMut(&mut Style)>(mut self, mut apply: T) -> Self {
         apply(&mut self.style);
         self
     }
 }
 
 impl StyleComponentApplier<FocusPolicy> for NodeBundle {
-    fn get_component<T: FnMut(&mut FocusPolicy) -> ()>(mut self, mut apply: T) -> Self {
+    fn get_component<T: FnMut(&mut FocusPolicy)>(mut self, mut apply: T) -> Self {
         apply(&mut self.focus_policy);
         self
     }
 }
 
 impl StyleComponentApplier<ZIndex> for NodeBundle {
-    fn get_component<T: FnMut(&mut ZIndex) -> ()>(mut self, mut apply: T) -> Self {
+    fn get_component<T: FnMut(&mut ZIndex)>(mut self, mut apply: T) -> Self {
         apply(&mut self.z_index);
         self
     }
 }
 
 impl StyleComponentApplier<Visibility> for NodeBundle {
-    fn get_component<T: FnMut(&mut Visibility) -> ()>(mut self, mut apply: T) -> Self {
+    fn get_component<T: FnMut(&mut Visibility)>(mut self, mut apply: T) -> Self {
         apply(&mut self.visibility);
         self
     }
