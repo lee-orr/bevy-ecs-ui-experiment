@@ -1,6 +1,6 @@
 use bevy::{
     prelude::{info, Color, Handle, Visibility},
-    text::{Font, TextStyle, Text, TextSection},
+    text::{Font, TextStyle, Text, TextSection, TextAlignment},
     ui::*,
 };
 
@@ -195,6 +195,12 @@ pub trait TextApplier: StyleComponentApplier<Text> + Sized {
             if let Some(mut last) = v.sections.last_mut() {
                 last.style.font = font.clone();
             }
+        })
+    }
+
+    fn text_alignment(self, alignment: TextAlignment) -> Self {
+        self.get_component(move |v| {
+            v.alignment = alignment;
         })
     }
 }
