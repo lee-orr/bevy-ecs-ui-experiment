@@ -20,7 +20,7 @@ fn setup(mut commands: Commands, assets: ResMut<AssetServer>) {
                 .bg(Color::rgb(1., 0.5, 0.2))
                 .size(Size::all(Val::Px(400.)))
                 .with_children(|p| {
-                    p.text("test!").text_color(Color::GREEN).font_size(40.).font(font.clone());
+                    p.text("test!").text_color(Color::GREEN).font_size(40.).font(font.clone()).append_text("Hello...").font_size(15.).font(font.clone());
                     p.spawn(TextBundle {
                         text: Text::from_section(
                             "test",
