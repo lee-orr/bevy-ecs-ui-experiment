@@ -3,7 +3,7 @@ use bevy::{
     ui::{BackgroundColor, FocusPolicy, Style, ZIndex},
 };
 
-use crate::style_structs::StyleComponentApplier;
+use crate::{style_structs::StyleComponentApplier, UiBundleGeneratorStyler};
 
 impl StyleComponentApplier<BackgroundColor> for NodeBundle {
     fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {
@@ -38,5 +38,11 @@ impl StyleComponentApplier<Visibility> for NodeBundle {
     fn get_component<T: FnMut(&mut Visibility)>(mut self, mut apply: T) -> Self {
         apply(&mut self.visibility);
         self
+    }
+}
+
+impl UiBundleGeneratorStyler for NodeBundle {
+    fn apply_styler<S: crate::Styler>(self, styler: &S) -> Self {
+        styler.style(self)
     }
 }

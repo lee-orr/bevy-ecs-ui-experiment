@@ -4,8 +4,6 @@ use bevy::{
     ui::*,
 };
 
-use crate::TextBuilder;
-
 pub trait StyleComponentApplier<Inner: Default> {
     fn get_component<T: FnMut(&mut Inner)>(self, apply: T) -> Self;
 }
@@ -17,6 +15,27 @@ pub trait BgColor: StyleComponentApplier<BackgroundColor> + Sized {
             v.0 = color;
             info!("set to {v:?}")
         })
+    }
+}
+
+pub trait Styler {
+    fn text_section_style<T: TextStyling>(&self, styled: T) -> T;
+    fn text_style<T: TextApplier>(&self, styled: T) -> T;
+    fn style<T: Layout + VisibilityApplier + BgColor + FocusPolicyApplier + ZIndexApplier>(&self, styled: T) -> T;
+}
+
+pub struct NullStyler;
+impl Styler for NullStyler {
+    fn text_section_style<T: TextStyling>(&self, styled: T) -> T {
+        styled
+    }
+
+    fn text_style<T: TextApplier>(&self, styled: T) -> T {
+        styled
+    }
+
+    fn style<T: Layout + VisibilityApplier + BgColor + FocusPolicyApplier + ZIndexApplier>(&self, styled: T) -> T {
+        styled
     }
 }
 
@@ -33,6 +52,7 @@ pub trait TextStyling: StyleComponentApplier<TextStyle> + Sized {
         self.get_component(move |v| v.font_size = size)
     }
 }
+impl<T: StyleComponentApplier<TextStyle> + Sized> TextStyling for T {}
 
 pub trait Layout: StyleComponentApplier<Style> + Sized {
     fn display(self, val: Display) -> Self {
@@ -169,7 +189,8 @@ pub trait TextApplier: StyleComponentApplier<Text> + Sized {
     fn append_text(self, value: impl Into<String>) -> Self {
         let value : String = value.into();
         self.get_component(move |v| {
-            let text = TextSection::new(value.clone(), TextStyle::default());
+            let default_style = v.sections.first().cloned().unwrap_or_default();
+            let text = TextSection::new(value.clone(),default_style.style);
             v.sections.push( text);
         })
     }

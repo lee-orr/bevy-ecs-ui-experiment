@@ -12,3 +12,4 @@ tuple_utils = "*"
 [dev-dependencies]
 
 bevy = { version = "0.10", default-features = true}
+bevy-inspector-egui = "*"
