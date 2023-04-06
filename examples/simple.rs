@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_ecs_ui_experiment::*;
+use bevy_ecs_ui_experiment::{ui_id::UiId, *};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 fn main() {
@@ -7,6 +7,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(EcsUiPlugin)
         .add_plugin(WorldInspectorPlugin::new())
+        .register_type::<UiId<i32>>()
         .add_startup_system(setup)
         .run();
 }
@@ -56,12 +57,15 @@ fn setup(mut commands: Commands, assets: ResMut<AssetServer>) {
         .bg(Color::rgb(1., 0.5, 0.2))
         .size(Size::all(Val::Px(400.)))
         .with_children(|mut p| {
-            p.text("test!").append_text("hello").text_color(Color::RED);
+            p.text("test!")
+                .append_text("hello")
+                .text_color(Color::RED)
+                .id(15);
             p.node().bg(Color::GREEN).size(Size::all(Val::Px(200.)));
             p.node()
                 .style(UiStyler::Heading(font.clone()))
                 .with_children(|mut p| {
-                    p.text("Header");
+                    p.text("Header").append_text("More Header");
                 });
         });
 }

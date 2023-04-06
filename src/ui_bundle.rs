@@ -1,8 +1,12 @@
 use bevy::{ecs::system::EntityCommands, prelude::*};
 
-use std::{marker::PhantomData, sync::Arc};
+use std::{fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
 
 use crate::{style_structs::StyleComponentApplier, NullStyler, Styler};
+
+pub mod ui_id;
+
+use ui_id::*;
 
 // #[derive(Bundle)]
 // pub struct UiBundle<Element: Component + Clone, StyleBundle: Bundle> {
@@ -55,7 +59,8 @@ impl<
         Bg: UiBundleGenerator + UiBundleGeneratorStyler + StyleComponentApplier<Inner>,
         S: InternalUiSpawner<'w, 's>,
         St: Styler,
-    > StyleComponentApplier<Inner> for UiComponent<'w, 's, 'a, Bg, S, St>
+        Id: Debug + PartialEq + Eq + Hash + Sync + Send + Clone + Copy,
+    > StyleComponentApplier<Inner> for UiComponent<'w, 's, 'a, Bg, S, St, Id>
 {
     fn get_component<T: FnMut(&mut Inner)>(mut self, apply: T) -> Self {
         let value = self.value.clone();
@@ -71,12 +76,14 @@ pub struct UiComponent<
     T: UiBundleGenerator + UiBundleGeneratorStyler,
     S: InternalUiSpawner<'w, 's>,
     St: Styler,
+    Id: Debug + PartialEq + Eq + Hash + Sync + Send + Clone + Copy + 'static,
 > {
     pub value: T,
     spawner: Option<&'a mut S>,
     phantom: PhantomData<&'w T>,
     phantom_2: PhantomData<&'s T>,
     styler: Arc<St>,
+    id: Option<Id>,
 }
 
 impl<
@@ -86,7 +93,8 @@ impl<
         T: UiBundleGenerator + UiBundleGeneratorStyler,
         S: InternalUiSpawner<'w, 's>,
         St: Styler,
-    > UiComponent<'w, 's, 'a, T, S, St>
+        Id: Debug + PartialEq + Eq + Hash + Sync + Send + Clone + Copy + 'static,
+    > UiComponent<'w, 's, 'a, T, S, St, Id>
 {
     pub fn new(value: T, spawner: &'a mut S, styler: Arc<St>) -> Self {
         let result = Self {
@@ -95,6 +103,7 @@ impl<
             phantom: PhantomData,
             phantom_2: PhantomData,
             styler,
+            id: None,
         };
         result.style_with_styler()
     }
@@ -102,7 +111,7 @@ impl<
     pub fn style<StB: Styler + 'static>(
         mut self,
         styler: StB,
-    ) -> UiComponent<'w, 's, 'a, T, S, StB> {
+    ) -> UiComponent<'w, 's, 'a, T, S, StB, Id> {
         let styler = styler;
         let styler: Arc<StB> = Arc::new(styler);
         let result = UiComponent {
@@ -111,8 +120,24 @@ impl<
             phantom: PhantomData,
             phantom_2: PhantomData,
             styler,
+            id: self.id,
         };
         result.style_with_styler()
+    }
+
+    pub fn id<IdB: Debug + PartialEq + Eq + Hash + Sync + Send + Clone + Copy + 'static>(
+        mut self,
+        id: IdB,
+    ) -> UiComponent<'w, 's, 'a, T, S, St, IdB> {
+        let id = id;
+        UiComponent {
+            value: self.value.clone(),
+            spawner: self.spawner.take(),
+            phantom: PhantomData,
+            phantom_2: PhantomData,
+            styler: self.styler.clone(),
+            id: Some(id),
+        }
     }
 
     fn style_with_styler(mut self) -> Self {
@@ -126,6 +151,7 @@ pub trait UiComponentSpawner<T: UiBundleGenerator> {
 }
 
 pub trait UiComponentSpawnerActivator<'w, 's, 'a, T, S, St: Styler> {
+    fn apply_id(&self, commands: &mut EntityCommands);
     fn get_component_styler(&self) -> Arc<St>;
     fn spawn(self) -> Option<EntityCommands<'w, 's, 'a>>;
     fn with_children<F: FnOnce((&mut ChildBuilder<'_, '_, '_>, Arc<St>))>(
@@ -164,7 +190,9 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
     fn get_spawner(&mut self) -> &mut Self::InternalSpawner;
     fn get_styler(&self) -> Arc<St>;
 
-    fn node<'a>(&'a mut self) -> UiComponent<'w, 's, 'a, NodeBundle, Self::InternalSpawner, St> {
+    fn node<'a>(
+        &'a mut self,
+    ) -> UiComponent<'w, 's, 'a, NodeBundle, Self::InternalSpawner, St, usize> {
         let styler = self.get_styler();
         UiComponent::new(NodeBundle::default(), self.get_spawner(), styler)
     }
@@ -172,7 +200,7 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
     fn text<'a>(
         &'a mut self,
         text: impl Into<String>,
-    ) -> UiComponent<'w, 's, 'a, TextBundle, Self::InternalSpawner, St> {
+    ) -> UiComponent<'w, 's, 'a, TextBundle, Self::InternalSpawner, St, usize> {
         let styler = self.get_styler();
         UiComponent::new(
             TextBundle {
@@ -186,7 +214,7 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
 
     fn raw_text<'a>(
         &'a mut self,
-    ) -> UiComponent<'w, 's, 'a, TextBundle, Self::InternalSpawner, St> {
+    ) -> UiComponent<'w, 's, 'a, TextBundle, Self::InternalSpawner, St, usize> {
         let styler = self.get_styler();
         UiComponent::new(TextBundle::default(), self.get_spawner(), styler)
     }
@@ -235,7 +263,8 @@ impl<
         T: UiBundleGenerator + UiBundleGeneratorStyler,
         S: InternalUiSpawner<'w, 's>,
         St: Styler,
-    > UiComponentSpawner<T> for UiComponent<'w, 's, 'a, T, S, St>
+        Id: Debug + PartialEq + Eq + Hash + Sync + Send + Clone + Copy,
+    > UiComponentSpawner<T> for UiComponent<'w, 's, 'a, T, S, St, Id>
 {
     fn update_value<U: FnMut(&mut T) -> &mut T>(mut self, mut updator: U) -> Self {
         updator(&mut self.value);
@@ -250,15 +279,29 @@ impl<
         T: UiBundleGenerator + UiBundleGeneratorStyler,
         S: InternalUiSpawner<'w, 's>,
         St: Styler,
-    > UiComponentSpawnerActivator<'w, 's, 'a, T, S, St> for UiComponent<'w, 's, 'a, T, S, St>
+        Id: Debug + PartialEq + Eq + Hash + Sync + Send + Clone + Copy + 'static,
+    > UiComponentSpawnerActivator<'w, 's, 'a, T, S, St> for UiComponent<'w, 's, 'a, T, S, St, Id>
 {
     fn spawn(mut self) -> Option<EntityCommands<'w, 's, 'a>> {
+        let id = self.id.take();
         let spawner = self.spawner.take();
-        spawner.map(|spawner| spawner.spawn_ui_component(&self.value))
+        spawner.map(|spawner| {
+            let mut result = spawner.spawn_ui_component(&self.value);
+            if let Some(id) = id {
+                result.insert(UiId::new(id));
+            }
+            result
+        })
     }
 
     fn get_component_styler(&self) -> Arc<St> {
         self.styler.clone()
+    }
+
+    fn apply_id(&self, commands: &mut EntityCommands) {
+        if let Some(id) = self.id.as_ref() {
+            commands.insert(UiId::new(*id));
+        }
     }
 }
 
@@ -307,32 +350,17 @@ impl<
         T: UiBundleGenerator + UiBundleGeneratorStyler,
         S: InternalUiSpawner<'w, 's>,
         St: Styler,
-    > Drop for UiComponent<'w, 's, 'a, T, S, St>
+        Id: Debug + PartialEq + Eq + Hash + Sync + Send + Clone + Copy + 'static,
+    > Drop for UiComponent<'w, 's, 'a, T, S, St, Id>
 {
     fn drop(&mut self) {
-        if let Some(spawner) = self.spawner.take() {
-            spawner.spawn_ui_component(&self.value);
-        } else {
-        }
-    }
-}
-
-pub mod ui_id {
-    use std::fmt::Debug;
-    use std::hash::Hash;
-
-    use bevy::prelude::Component;
-
-    #[derive(Component, Debug)]
-    pub struct UiId<T: Debug + PartialEq + Eq + Hash + Sync + Send>(T);
-
-    impl<T: Debug + PartialEq + Eq + Hash + Sync + Send> UiId<T> {
-        pub fn val(&self) -> &T {
-            &self.0
-        }
-
-        pub fn new(val: T) -> Self {
-            Self(val)
-        }
+        let id = self.id.take();
+        let spawner = self.spawner.take();
+        spawner.map(|spawner| {
+            let mut result = spawner.spawn_ui_component(&self.value);
+            if let Some(id) = id {
+                result.insert(UiId::new(id));
+            }
+        });
     }
 }
