@@ -1,6 +1,6 @@
 use bevy::{
-    prelude::{info, NodeBundle, Visibility, TextBundle},
-    text::{Text, TextSection, TextStyle},
+    prelude::{info, TextBundle, Visibility},
+    text::{Text},
     ui::{BackgroundColor, FocusPolicy, Style, ZIndex},
 };
 

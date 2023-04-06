@@ -1,8 +1,8 @@
 use bevy::{ecs::system::EntityCommands, prelude::*};
 
-use std::{marker::PhantomData, rc::Rc, sync::Arc};
+use std::{marker::PhantomData, sync::Arc};
 
-use crate::{style_structs::StyleComponentApplier, Styler, NullStyler};
+use crate::{style_structs::StyleComponentApplier, NullStyler, Styler};
 
 // #[derive(Bundle)]
 // pub struct UiBundle<Element: Component + Clone, StyleBundle: Bundle> {
@@ -53,7 +53,8 @@ impl<
         'a,
         Inner: Default,
         Bg: UiBundleGenerator + UiBundleGeneratorStyler + StyleComponentApplier<Inner>,
-        S: InternalUiSpawner<'w, 's>, St: Styler
+        S: InternalUiSpawner<'w, 's>,
+        St: Styler,
     > StyleComponentApplier<Inner> for UiComponent<'w, 's, 'a, Bg, S, St>
 {
     fn get_component<T: FnMut(&mut Inner)>(mut self, apply: T) -> Self {
@@ -63,27 +64,45 @@ impl<
     }
 }
 
-pub struct UiComponent<'w, 's, 'a, T: UiBundleGenerator + UiBundleGeneratorStyler, S: InternalUiSpawner<'w, 's>, St: Styler> {
+pub struct UiComponent<
+    'w,
+    's,
+    'a,
+    T: UiBundleGenerator + UiBundleGeneratorStyler,
+    S: InternalUiSpawner<'w, 's>,
+    St: Styler,
+> {
     pub value: T,
     spawner: Option<&'a mut S>,
     phantom: PhantomData<&'w T>,
     phantom_2: PhantomData<&'s T>,
-    styler: Arc<St>
+    styler: Arc<St>,
 }
 
-impl<'w, 's, 'a, T: UiBundleGenerator + UiBundleGeneratorStyler, S: InternalUiSpawner<'w, 's>, St: Styler> UiComponent<'w, 's, 'a, T, S,St> {
+impl<
+        'w,
+        's,
+        'a,
+        T: UiBundleGenerator + UiBundleGeneratorStyler,
+        S: InternalUiSpawner<'w, 's>,
+        St: Styler,
+    > UiComponent<'w, 's, 'a, T, S, St>
+{
     pub fn new(value: T, spawner: &'a mut S, styler: Arc<St>) -> Self {
         let result = Self {
             value,
             spawner: Some(spawner),
             phantom: PhantomData,
             phantom_2: PhantomData,
-            styler: styler,
+            styler,
         };
         result.style_with_styler()
     }
 
-    pub fn style<StB: Styler + 'static>(mut self, styler: StB) -> UiComponent<'w, 's, 'a, T, S, StB> {
+    pub fn style<StB: Styler + 'static>(
+        mut self,
+        styler: StB,
+    ) -> UiComponent<'w, 's, 'a, T, S, StB> {
         let styler = styler;
         let styler: Arc<StB> = Arc::new(styler);
         let result = UiComponent {
@@ -91,7 +110,7 @@ impl<'w, 's, 'a, T: UiBundleGenerator + UiBundleGeneratorStyler, S: InternalUiSp
             spawner: self.spawner.take(),
             phantom: PhantomData,
             phantom_2: PhantomData,
-            styler: styler,
+            styler,
         };
         result.style_with_styler()
     }
@@ -140,9 +159,9 @@ pub trait InternalUiSpawner<'w, 's>: Sized {
 }
 
 pub trait ExternalUiSpawner<'w, 's, St: Styler> {
-    type InternalSpawner : InternalUiSpawner<'w, 's>;
+    type InternalSpawner: InternalUiSpawner<'w, 's>;
 
-    fn get_spawner<'a>(&'a mut self) -> &'a mut Self::InternalSpawner;
+    fn get_spawner(&mut self) -> &mut Self::InternalSpawner;
     fn get_styler(&self) -> Arc<St>;
 
     fn node<'a>(&'a mut self) -> UiComponent<'w, 's, 'a, NodeBundle, Self::InternalSpawner, St> {
@@ -150,12 +169,24 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
         UiComponent::new(NodeBundle::default(), self.get_spawner(), styler)
     }
 
-    fn text<'a>(&'a mut self, text: impl Into<String>) -> UiComponent<'w, 's, 'a, TextBundle, Self::InternalSpawner, St> {
+    fn text<'a>(
+        &'a mut self,
+        text: impl Into<String>,
+    ) -> UiComponent<'w, 's, 'a, TextBundle, Self::InternalSpawner, St> {
         let styler = self.get_styler();
-        UiComponent::new(TextBundle { text: Text::from_section(text, TextStyle::default()), ..Default::default() }, self.get_spawner(), styler)
+        UiComponent::new(
+            TextBundle {
+                text: Text::from_section(text, TextStyle::default()),
+                ..Default::default()
+            },
+            self.get_spawner(),
+            styler,
+        )
     }
 
-    fn raw_text<'a>(&'a mut self) -> UiComponent<'w, 's, 'a, TextBundle, Self::InternalSpawner, St> {
+    fn raw_text<'a>(
+        &'a mut self,
+    ) -> UiComponent<'w, 's, 'a, TextBundle, Self::InternalSpawner, St> {
         let styler = self.get_styler();
         UiComponent::new(TextBundle::default(), self.get_spawner(), styler)
     }
@@ -197,8 +228,14 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
     // }
 }
 
-impl<'w, 's, 'a, T: UiBundleGenerator + UiBundleGeneratorStyler, S: InternalUiSpawner<'w, 's>, St: Styler> UiComponentSpawner<T>
-    for UiComponent<'w, 's, 'a, T, S, St>
+impl<
+        'w,
+        's,
+        'a,
+        T: UiBundleGenerator + UiBundleGeneratorStyler,
+        S: InternalUiSpawner<'w, 's>,
+        St: Styler,
+    > UiComponentSpawner<T> for UiComponent<'w, 's, 'a, T, S, St>
 {
     fn update_value<U: FnMut(&mut T) -> &mut T>(mut self, mut updator: U) -> Self {
         updator(&mut self.value);
@@ -206,8 +243,14 @@ impl<'w, 's, 'a, T: UiBundleGenerator + UiBundleGeneratorStyler, S: InternalUiSp
     }
 }
 
-impl<'w, 's, 'a, T: UiBundleGenerator + UiBundleGeneratorStyler, S: InternalUiSpawner<'w, 's>, St: Styler>
-    UiComponentSpawnerActivator<'w, 's, 'a, T, S, St> for UiComponent<'w, 's, 'a, T, S, St>
+impl<
+        'w,
+        's,
+        'a,
+        T: UiBundleGenerator + UiBundleGeneratorStyler,
+        S: InternalUiSpawner<'w, 's>,
+        St: Styler,
+    > UiComponentSpawnerActivator<'w, 's, 'a, T, S, St> for UiComponent<'w, 's, 'a, T, S, St>
 {
     fn spawn(mut self) -> Option<EntityCommands<'w, 's, 'a>> {
         let spawner = self.spawner.take();
@@ -228,7 +271,7 @@ impl<'w, 's> InternalUiSpawner<'w, 's> for Commands<'w, 's> {
 impl<'w, 's> ExternalUiSpawner<'w, 's, NullStyler> for Commands<'w, 's> {
     type InternalSpawner = Self;
 
-    fn get_spawner<'a>(&'a mut self) -> &'a mut Self::InternalSpawner {
+    fn get_spawner(&mut self) -> &mut Self::InternalSpawner {
         self
     }
 
@@ -243,11 +286,13 @@ impl<'w, 's> InternalUiSpawner<'w, 's> for ChildBuilder<'w, 's, '_> {
     }
 }
 
-impl<'w, 's, 'l, St: Styler> ExternalUiSpawner<'w, 's, St> for (&mut ChildBuilder<'w, 's, 'l>, Arc<St>) {
+impl<'w, 's, 'l, St: Styler> ExternalUiSpawner<'w, 's, St>
+    for (&mut ChildBuilder<'w, 's, 'l>, Arc<St>)
+{
     type InternalSpawner = ChildBuilder<'w, 's, 'l>;
 
-    fn get_spawner<'a>(&'a mut self) -> &'a mut Self::InternalSpawner {
-        &mut self.0
+    fn get_spawner(&mut self) -> &mut Self::InternalSpawner {
+        self.0
     }
 
     fn get_styler(&self) -> Arc<St> {
@@ -255,8 +300,14 @@ impl<'w, 's, 'l, St: Styler> ExternalUiSpawner<'w, 's, St> for (&mut ChildBuilde
     }
 }
 
-impl<'w, 's, 'a, T: UiBundleGenerator + UiBundleGeneratorStyler, S: InternalUiSpawner<'w, 's>, St: Styler> Drop
-    for UiComponent<'w, 's, 'a, T, S, St>
+impl<
+        'w,
+        's,
+        'a,
+        T: UiBundleGenerator + UiBundleGeneratorStyler,
+        S: InternalUiSpawner<'w, 's>,
+        St: Styler,
+    > Drop for UiComponent<'w, 's, 'a, T, S, St>
 {
     fn drop(&mut self) {
         if let Some(spawner) = self.spawner.take() {
