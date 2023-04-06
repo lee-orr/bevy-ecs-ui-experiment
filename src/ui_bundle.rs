@@ -219,41 +219,30 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
         UiComponent::new(TextBundle::default(), self.get_spawner(), styler)
     }
 
-    // fn ui_root<'a>(&'a mut self) -> UiComponent<'w, 's, 'a, UiRoot, Self>
-    // where
-    //     Self: Sized,
-    // {
-    //     UiComponent::new(UiRoot::new(), self)
-    // }
-    // fn div<'a>(&'a mut self) -> UiComponent<'w, 's, 'a, Div, Self>
-    // where
-    //     Self: Sized,
-    // {
-    //     UiComponent::new(Div::new(), self)
-    // }
-    // fn text<'a, T: Into<String>>(&'a mut self, text: T) -> UiComponent<'w, 's, 'a, GameText, Self>
-    // where
-    //     Self: Sized,
-    // {
-    //     UiComponent::new(GameText::new(text), self)
-    // }
-    // fn button<'a, N: Into<String>, T: Into<String>>(
-    //     &'a mut self,
-    //     name: N,
-    //     text: T,
-    // ) -> UiComponent<'w, 's, 'a, GameButton, Self>
-    // where
-    //     Self: Sized,
-    // {
-    //     UiComponent::new(GameButton::new(name, text), self)
-    // }
+    fn image<'a>(
+        &'a mut self,
+        image: Handle<Image>
+    ) -> UiComponent<'w, 's, 'a, ImageBundle, Self::InternalSpawner, St, usize> {
+        let styler = self.get_styler();
+        UiComponent::new(
+            ImageBundle {
+                image: UiImage {
+                    texture: image.clone(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            self.get_spawner(),
+            styler,
+        )
+    }
 
-    // fn icon<'a>(&'a mut self, icon: Handle<Image>) -> UiComponent<'w, 's, 'a, GameIcon, Self>
-    // where
-    //     Self: Sized,
-    // {
-    //     UiComponent::new(GameIcon::new(icon), self)
-    // }
+    fn button<'a>(
+        &'a mut self,
+    ) -> UiComponent<'w, 's, 'a, ButtonBundle, Self::InternalSpawner, St, usize> {
+        let styler = self.get_styler();
+        UiComponent::new(ButtonBundle::default(), self.get_spawner(), styler)
+    }
 }
 
 impl<

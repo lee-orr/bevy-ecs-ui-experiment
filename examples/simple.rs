@@ -49,6 +49,7 @@ impl Styler for UiStyler {
 
 fn setup(mut commands: Commands, assets: ResMut<AssetServer>) {
     let font: Handle<Font> = assets.load("libre-baskerville/LibreBaskerville-Regular.ttf");
+    let image: Handle<Image> = assets.load("test-image.png");
     commands.spawn(Camera2dBundle::default());
 
     commands
@@ -67,5 +68,6 @@ fn setup(mut commands: Commands, assets: ResMut<AssetServer>) {
                 .with_children(|mut p| {
                     p.text("Header").append_text("More Header");
                 });
+            p.image(image.clone()).size(Size::all(Val::Px(150.)));
         });
 }

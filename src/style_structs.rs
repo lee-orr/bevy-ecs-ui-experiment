@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{info, Color, Handle, Visibility},
+    prelude::{info, Color, Handle, Visibility, Image},
     text::{Font, Text, TextAlignment, TextSection, TextStyle},
     ui::*,
 };
@@ -233,3 +233,20 @@ pub trait TextApplier: StyleComponentApplier<Text> + Sized {
 }
 
 impl<T: StyleComponentApplier<Text> + Sized> TextApplier for T {}
+
+pub trait ImageApplier: StyleComponentApplier<UiImage> + Sized {
+    fn texture(self, val: Handle<Image>) -> Self {
+        self.get_component(move |v| {
+            v.texture = val.clone();
+        })
+    }
+
+    fn flip(self, x: bool, y: bool) -> Self {
+        self.get_component(move |v| {
+            v.flip_x = x;
+            v.flip_y = y;
+        })
+    }
+}
+
+impl<T: StyleComponentApplier<UiImage> + Sized> ImageApplier for T {}
