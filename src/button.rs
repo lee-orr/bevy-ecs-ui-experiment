@@ -1,9 +1,18 @@
 use bevy::{
-    prelude::{info, ButtonBundle, Visibility},
+    prelude::{info, ButtonBundle, Visibility, Component, Bundle},
     ui::{BackgroundColor, FocusPolicy, Style, ZIndex, UiImage},
 };
 
 use crate::{style_structs::StyleComponentApplier, UiBundleGeneratorStyler};
+
+#[derive(Component)]
+pub struct ButtonNode;
+
+#[derive(Bundle)]
+pub struct UiButtonBundle {
+    node_bundle: ButtonBundle,
+    marker: ButtonNode,
+}
 
 impl StyleComponentApplier<BackgroundColor> for ButtonBundle {
     fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {

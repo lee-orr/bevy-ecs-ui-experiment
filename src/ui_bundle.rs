@@ -4,9 +4,7 @@ use std::{fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
 
 use crate::{style_structs::StyleComponentApplier, NullStyler, Styler};
 
-pub mod ui_id;
-
-use ui_id::*;
+use crate::{ui_id::*, UiNodeBundle, UiTextBundle, UiImageBundle};
 
 // #[derive(Bundle)]
 // pub struct UiBundle<Element: Component + Clone, StyleBundle: Bundle> {
@@ -192,19 +190,22 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
 
     fn node<'a>(
         &'a mut self,
-    ) -> UiComponent<'w, 's, 'a, NodeBundle, Self::InternalSpawner, St, usize> {
+    ) -> UiComponent<'w, 's, 'a, UiNodeBundle, Self::InternalSpawner, St, usize> {
         let styler = self.get_styler();
-        UiComponent::new(NodeBundle::default(), self.get_spawner(), styler)
+        UiComponent::new(UiNodeBundle::default(), self.get_spawner(), styler)
     }
 
     fn text<'a>(
         &'a mut self,
         text: impl Into<String>,
-    ) -> UiComponent<'w, 's, 'a, TextBundle, Self::InternalSpawner, St, usize> {
+    ) -> UiComponent<'w, 's, 'a, UiTextBundle, Self::InternalSpawner, St, usize> {
         let styler = self.get_styler();
         UiComponent::new(
-            TextBundle {
+            UiTextBundle {
+                node_bundle: TextBundle{
                 text: Text::from_section(text, TextStyle::default()),
+                ..default()
+                },
                 ..Default::default()
             },
             self.get_spawner(),
@@ -214,24 +215,26 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
 
     fn raw_text<'a>(
         &'a mut self,
-    ) -> UiComponent<'w, 's, 'a, TextBundle, Self::InternalSpawner, St, usize> {
+    ) -> UiComponent<'w, 's, 'a, UiTextBundle, Self::InternalSpawner, St, usize> {
         let styler = self.get_styler();
-        UiComponent::new(TextBundle::default(), self.get_spawner(), styler)
+        UiComponent::new(UiTextBundle::default(), self.get_spawner(), styler)
     }
 
     fn image<'a>(
         &'a mut self,
         image: Handle<Image>
-    ) -> UiComponent<'w, 's, 'a, ImageBundle, Self::InternalSpawner, St, usize> {
+    ) -> UiComponent<'w, 's, 'a, UiImageBundle, Self::InternalSpawner, St, usize> {
         let styler = self.get_styler();
-        UiComponent::new(
-            ImageBundle {
+        UiComponent::new(UiImageBundle {
+            node_bundle: ImageBundle {
                 image: UiImage {
                     texture: image.clone(),
                     ..Default::default()
                 },
                 ..Default::default()
             },
+            ..Default::default()
+        },
             self.get_spawner(),
             styler,
         )

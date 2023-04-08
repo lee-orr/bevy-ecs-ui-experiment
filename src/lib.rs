@@ -4,6 +4,7 @@ pub mod text;
 pub mod ui_bundle;
 pub mod image;
 pub mod button;
+pub mod ui_id;
 
 use bevy::prelude::*;
 
@@ -13,6 +14,7 @@ pub use text::*;
 pub use image::*;
 pub use button::*;
 pub use ui_bundle::*;
+pub use ui_id::*;
 
 pub struct EcsUiPlugin;
 

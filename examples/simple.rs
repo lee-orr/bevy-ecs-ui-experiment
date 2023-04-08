@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*};
 use bevy_ecs_ui_experiment::{ui_id::UiId, *};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
@@ -6,9 +6,10 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(EcsUiPlugin)
-        .add_plugin(WorldInspectorPlugin::new())
+        // .add_plugin(WorldInspectorPlugin::new())
         .register_type::<UiId<i32>>()
         .add_startup_system(setup)
+        .add_system(adjust_style)
         .run();
 }
 
@@ -57,17 +58,36 @@ fn setup(mut commands: Commands, assets: ResMut<AssetServer>) {
         .style(UiStyler::Base(font.clone()))
         .bg(Color::rgb(1., 0.5, 0.2))
         .size(Size::all(Val::Px(400.)))
+        .flex_direction(FlexDirection::Column)
+        .align_items(AlignItems::Center)
+        .justify_content(JustifyContent::SpaceBetween)
         .with_children(|mut p| {
-            p.text("test!")
-                .append_text("hello")
-                .text_color(Color::RED)
-                .id(15);
-            p.node().bg(Color::GREEN).size(Size::all(Val::Px(200.)));
-            p.node()
-                .style(UiStyler::Heading(font.clone()))
-                .with_children(|mut p| {
-                    p.text("Header").append_text("More Header");
-                });
-            p.image(image.clone()).size(Size::all(Val::Px(150.)));
+            p.text("A IS NOT PRESSED").id(15);
+            p.text("I don't change...").id(16);
+            p.image(image).size(Size::all(Val::Px(150.))).id(16);
         });
+}
+
+fn adjust_style(mut query: ParamSet<(TextQuery<i32>, ImageQuery<i32>)>, input: Res<Input<KeyCode>>) {
+    if input.pressed(KeyCode::A) {
+        for (id, node) in query.p0().iter_mut() {
+            if *id.val() == 15 {
+                node.bg(Color::GREEN).set_text("A Is Pressed").text_color(Color::BLACK);
+            }
+        }
+
+        for (_, node) in query.p1().iter_mut() {
+            node.flip(true, true);
+        }
+    } else {
+        for (id, node) in query.p0().iter_mut() {
+            if *id.val() == 15 {
+                node.bg(Color::RED).set_text("A Is Not Pressed").text_color(Color::WHITE);
+            }
+        }
+
+        for (_, node) in query.p1().iter_mut() {
+            node.flip(false, false);
+        }
+    }
 }
