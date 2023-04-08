@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{info, Bundle, Component, Mut, NodeBundle, Visibility},
+    prelude::{Bundle, Component, Mut, NodeBundle, Visibility},
     ui::{BackgroundColor, FocusPolicy, Style, ZIndex},
 };
 
@@ -26,7 +26,6 @@ pub struct UiNodeBundle {
 
 impl StyleComponentApplier<BackgroundColor> for UiNodeBundle {
     fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {
-        info!("Dispatching background color...");
         apply(&mut self.node_bundle.background_color);
         self
     }
@@ -76,7 +75,6 @@ impl<'a> StyleComponentApplier<BackgroundColor>
     )
 {
     fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {
-        info!("Dispatching background color...");
         apply(&mut self.1);
         self
     }

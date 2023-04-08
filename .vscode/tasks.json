@@ -1,0 +1,18 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"command": "cargo run --example simple",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"label": "Simple"
+		},
+		{
+			"type": "shell",
+			"command": "cargo clippy --fix --allow-dirty && cargo fmt",
+			"label": "Clippy & Fmt"
+		}
+	]
+}

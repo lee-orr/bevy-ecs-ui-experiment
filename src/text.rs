@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{info, Bundle, Component, Mut, TextBundle, Visibility},
+    prelude::{Bundle, Component, Mut, TextBundle, Visibility},
     text::Text,
     ui::{BackgroundColor, FocusPolicy, Style, ZIndex},
 };
@@ -28,7 +28,6 @@ pub struct UiTextBundle {
 
 impl StyleComponentApplier<BackgroundColor> for UiTextBundle {
     fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {
-        info!("Dispatching background color...");
         apply(&mut self.node_bundle.background_color);
         self
     }
@@ -87,7 +86,6 @@ impl<'a> StyleComponentApplier<BackgroundColor>
     )
 {
     fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {
-        info!("Dispatching background color...");
         apply(&mut self.1);
         self
     }
