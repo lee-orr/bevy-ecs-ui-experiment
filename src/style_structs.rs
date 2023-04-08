@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{info, Color, Handle, Visibility, Image},
+    prelude::{info, Color, Handle, Image, Visibility},
     text::{Font, Text, TextAlignment, TextSection, TextStyle},
     ui::*,
 };
@@ -179,7 +179,11 @@ pub trait TextApplier: StyleComponentApplier<Text> + Sized {
     fn set_text(self, value: impl Into<String>) -> Self {
         let value = value.into();
         self.get_component(move |v| {
-            let style = v.sections.first().map(|a| a.style.clone()).unwrap_or_default();
+            let style = v
+                .sections
+                .first()
+                .map(|a| a.style.clone())
+                .unwrap_or_default();
             let text = Text::from_section(value.clone(), style);
             v.clone_from(&text);
         })

@@ -4,7 +4,7 @@ use std::{fmt::Debug, hash::Hash, marker::PhantomData, sync::Arc};
 
 use crate::{style_structs::StyleComponentApplier, NullStyler, Styler};
 
-use crate::{ui_id::*, UiNodeBundle, UiTextBundle, UiImageBundle};
+use crate::{ui_id::*, UiImageBundle, UiNodeBundle, UiTextBundle};
 
 // #[derive(Bundle)]
 // pub struct UiBundle<Element: Component + Clone, StyleBundle: Bundle> {
@@ -202,9 +202,9 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
         let styler = self.get_styler();
         UiComponent::new(
             UiTextBundle {
-                node_bundle: TextBundle{
-                text: Text::from_section(text, TextStyle::default()),
-                ..default()
+                node_bundle: TextBundle {
+                    text: Text::from_section(text, TextStyle::default()),
+                    ..default()
                 },
                 ..Default::default()
             },
@@ -222,19 +222,20 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
 
     fn image<'a>(
         &'a mut self,
-        image: Handle<Image>
+        image: Handle<Image>,
     ) -> UiComponent<'w, 's, 'a, UiImageBundle, Self::InternalSpawner, St, usize> {
         let styler = self.get_styler();
-        UiComponent::new(UiImageBundle {
-            node_bundle: ImageBundle {
-                image: UiImage {
-                    texture: image.clone(),
+        UiComponent::new(
+            UiImageBundle {
+                node_bundle: ImageBundle {
+                    image: UiImage {
+                        texture: image,
+                        ..Default::default()
+                    },
                     ..Default::default()
                 },
                 ..Default::default()
             },
-            ..Default::default()
-        },
             self.get_spawner(),
             styler,
         )

@@ -1,6 +1,5 @@
-use bevy::{prelude::*};
+use bevy::prelude::*;
 use bevy_ecs_ui_experiment::{ui_id::UiId, *};
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 fn main() {
     App::new()
@@ -55,7 +54,7 @@ fn setup(mut commands: Commands, assets: ResMut<AssetServer>) {
 
     commands
         .node()
-        .style(UiStyler::Base(font.clone()))
+        .style(UiStyler::Base(font))
         .bg(Color::rgb(1., 0.5, 0.2))
         .size(Size::all(Val::Px(400.)))
         .flex_direction(FlexDirection::Column)
@@ -68,11 +67,16 @@ fn setup(mut commands: Commands, assets: ResMut<AssetServer>) {
         });
 }
 
-fn adjust_style(mut query: ParamSet<(TextQuery<i32>, ImageQuery<i32>)>, input: Res<Input<KeyCode>>) {
+fn adjust_style(
+    mut query: ParamSet<(TextQuery<i32>, ImageQuery<i32>)>,
+    input: Res<Input<KeyCode>>,
+) {
     if input.pressed(KeyCode::A) {
         for (id, node) in query.p0().iter_mut() {
             if *id.val() == 15 {
-                node.bg(Color::GREEN).set_text("A Is Pressed").text_color(Color::BLACK);
+                node.bg(Color::GREEN)
+                    .set_text("A Is Pressed")
+                    .text_color(Color::BLACK);
             }
         }
 
@@ -82,7 +86,9 @@ fn adjust_style(mut query: ParamSet<(TextQuery<i32>, ImageQuery<i32>)>, input: R
     } else {
         for (id, node) in query.p0().iter_mut() {
             if *id.val() == 15 {
-                node.bg(Color::RED).set_text("A Is Not Pressed").text_color(Color::WHITE);
+                node.bg(Color::RED)
+                    .set_text("A Is Not Pressed")
+                    .text_color(Color::WHITE);
             }
         }
 

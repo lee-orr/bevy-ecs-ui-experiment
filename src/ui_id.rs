@@ -17,5 +17,4 @@ impl<T: Debug + PartialEq + Eq + Hash + Sync + Send + Clone + Copy> UiId<T> {
     }
 }
 
-
 pub type UIQuery<'w, 's, 'a, T, Q, M> = Query<'w, 's, (&'a UiId<T>, Q), With<M>>;

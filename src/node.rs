@@ -1,13 +1,17 @@
 use bevy::{
-    prelude::{info, Visibility, Mut, Bundle, NodeBundle, Component},
+    prelude::{info, Bundle, Component, Mut, NodeBundle, Visibility},
     ui::{BackgroundColor, FocusPolicy, Style, ZIndex},
 };
-use std::{fmt::Debug};
-use std::hash::Hash;
 
-use crate::{style_structs::StyleComponentApplier, UiBundleGeneratorStyler, UIQuery};
+use crate::{style_structs::StyleComponentApplier, UIQuery, UiBundleGeneratorStyler};
 
-pub type NodeComponents<'a> = (&'a mut Style, &'a mut BackgroundColor, &'a mut FocusPolicy, &'a mut ZIndex, &'a mut Visibility);
+pub type NodeComponents<'a> = (
+    &'a mut Style,
+    &'a mut BackgroundColor,
+    &'a mut FocusPolicy,
+    &'a mut ZIndex,
+    &'a mut Visibility,
+);
 
 pub type NodeQuery<'w, 's, 'a, T> = UIQuery<'w, 's, 'a, T, NodeComponents<'a>, UiNode>;
 
@@ -17,7 +21,7 @@ pub struct UiNode;
 #[derive(Bundle, Clone, Default)]
 pub struct UiNodeBundle {
     node_bundle: NodeBundle,
-    marker: UiNode
+    marker: UiNode,
 }
 
 impl StyleComponentApplier<BackgroundColor> for UiNodeBundle {
@@ -62,7 +66,15 @@ impl UiBundleGeneratorStyler for UiNodeBundle {
     }
 }
 
-impl<'a> StyleComponentApplier<BackgroundColor> for (Mut<'a, Style>, Mut<'a, BackgroundColor>, Mut<'a, FocusPolicy>, Mut<'a, ZIndex>, Mut<'a, Visibility>) {
+impl<'a> StyleComponentApplier<BackgroundColor>
+    for (
+        Mut<'a, Style>,
+        Mut<'a, BackgroundColor>,
+        Mut<'a, FocusPolicy>,
+        Mut<'a, ZIndex>,
+        Mut<'a, Visibility>,
+    )
+{
     fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {
         info!("Dispatching background color...");
         apply(&mut self.1);
@@ -70,35 +82,75 @@ impl<'a> StyleComponentApplier<BackgroundColor> for (Mut<'a, Style>, Mut<'a, Bac
     }
 }
 
-impl<'a> StyleComponentApplier<Style> for (Mut<'a, Style>, Mut<'a, BackgroundColor>, Mut<'a, FocusPolicy>, Mut<'a, ZIndex>, Mut<'a, Visibility>) {
+impl<'a> StyleComponentApplier<Style>
+    for (
+        Mut<'a, Style>,
+        Mut<'a, BackgroundColor>,
+        Mut<'a, FocusPolicy>,
+        Mut<'a, ZIndex>,
+        Mut<'a, Visibility>,
+    )
+{
     fn get_component<T: FnMut(&mut Style)>(mut self, mut apply: T) -> Self {
         apply(&mut self.0);
         self
     }
 }
 
-impl<'a> StyleComponentApplier<FocusPolicy> for (Mut<'a, Style>, Mut<'a, BackgroundColor>, Mut<'a, FocusPolicy>, Mut<'a, ZIndex>, Mut<'a, Visibility>) {
+impl<'a> StyleComponentApplier<FocusPolicy>
+    for (
+        Mut<'a, Style>,
+        Mut<'a, BackgroundColor>,
+        Mut<'a, FocusPolicy>,
+        Mut<'a, ZIndex>,
+        Mut<'a, Visibility>,
+    )
+{
     fn get_component<T: FnMut(&mut FocusPolicy)>(mut self, mut apply: T) -> Self {
         apply(&mut self.2);
         self
     }
 }
 
-impl<'a> StyleComponentApplier<ZIndex> for (Mut<'a, Style>, Mut<'a, BackgroundColor>, Mut<'a, FocusPolicy>, Mut<'a, ZIndex>, Mut<'a, Visibility>) {
+impl<'a> StyleComponentApplier<ZIndex>
+    for (
+        Mut<'a, Style>,
+        Mut<'a, BackgroundColor>,
+        Mut<'a, FocusPolicy>,
+        Mut<'a, ZIndex>,
+        Mut<'a, Visibility>,
+    )
+{
     fn get_component<T: FnMut(&mut ZIndex)>(mut self, mut apply: T) -> Self {
         apply(&mut self.3);
         self
     }
 }
 
-impl<'a> StyleComponentApplier<Visibility> for (Mut<'a, Style>, Mut<'a, BackgroundColor>, Mut<'a, FocusPolicy>, Mut<'a, ZIndex>, Mut<'a, Visibility>) {
+impl<'a> StyleComponentApplier<Visibility>
+    for (
+        Mut<'a, Style>,
+        Mut<'a, BackgroundColor>,
+        Mut<'a, FocusPolicy>,
+        Mut<'a, ZIndex>,
+        Mut<'a, Visibility>,
+    )
+{
     fn get_component<T: FnMut(&mut Visibility)>(mut self, mut apply: T) -> Self {
         apply(&mut self.4);
         self
     }
 }
 
-impl<'a> UiBundleGeneratorStyler for (Mut<'a, Style>, Mut<'a, BackgroundColor>, Mut<'a, FocusPolicy>, Mut<'a, ZIndex>, Mut<'a, Visibility>) {
+impl<'a> UiBundleGeneratorStyler
+    for (
+        Mut<'a, Style>,
+        Mut<'a, BackgroundColor>,
+        Mut<'a, FocusPolicy>,
+        Mut<'a, ZIndex>,
+        Mut<'a, Visibility>,
+    )
+{
     fn apply_styler<S: crate::Styler>(self, styler: &S) -> Self {
         styler.style(self)
     }

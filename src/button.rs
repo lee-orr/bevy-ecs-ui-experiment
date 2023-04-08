@@ -1,6 +1,6 @@
 use bevy::{
-    prelude::{info, ButtonBundle, Visibility, Component, Bundle},
-    ui::{BackgroundColor, FocusPolicy, Style, ZIndex, UiImage},
+    prelude::{info, Bundle, ButtonBundle, Component, Visibility},
+    ui::{BackgroundColor, FocusPolicy, Style, UiImage, ZIndex},
 };
 
 use crate::{style_structs::StyleComponentApplier, UiBundleGeneratorStyler};
