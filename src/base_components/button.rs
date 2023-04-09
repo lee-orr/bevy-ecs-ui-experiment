@@ -14,49 +14,49 @@ pub struct UiButtonBundle {
     marker: ButtonNode,
 }
 
-impl StyleComponentApplier<BackgroundColor> for ButtonBundle {
+impl StyleComponentApplier<BackgroundColor> for UiButtonBundle {
     fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.background_color);
+        apply(&mut self.node_bundle.background_color);
         self
     }
 }
 
-impl StyleComponentApplier<Style> for ButtonBundle {
+impl StyleComponentApplier<Style> for UiButtonBundle {
     fn get_component<T: FnMut(&mut Style)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.style);
+        apply(&mut self.node_bundle.style);
         self
     }
 }
 
-impl StyleComponentApplier<FocusPolicy> for ButtonBundle {
+impl StyleComponentApplier<FocusPolicy> for UiButtonBundle {
     fn get_component<T: FnMut(&mut FocusPolicy)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.focus_policy);
+        apply(&mut self.node_bundle.focus_policy);
         self
     }
 }
 
-impl StyleComponentApplier<ZIndex> for ButtonBundle {
+impl StyleComponentApplier<ZIndex> for UiButtonBundle {
     fn get_component<T: FnMut(&mut ZIndex)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.z_index);
+        apply(&mut self.node_bundle.z_index);
         self
     }
 }
 
-impl StyleComponentApplier<Visibility> for ButtonBundle {
+impl StyleComponentApplier<Visibility> for UiButtonBundle {
     fn get_component<T: FnMut(&mut Visibility)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.visibility);
+        apply(&mut self.node_bundle.visibility);
         self
     }
 }
 
-impl StyleComponentApplier<UiImage> for ButtonBundle {
+impl StyleComponentApplier<UiImage> for UiButtonBundle {
     fn get_component<T: FnMut(&mut UiImage)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.image);
+        apply(&mut self.node_bundle.image);
         self
     }
 }
 
-impl UiBundleGeneratorStyler for ButtonBundle {
+impl UiBundleGeneratorStyler for UiButtonBundle {
     fn apply_styler<S: crate::Styler>(self, styler: &S) -> Self {
         styler.style(self)
     }

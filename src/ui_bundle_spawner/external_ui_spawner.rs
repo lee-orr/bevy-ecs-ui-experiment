@@ -10,9 +10,9 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
 
     fn node<'a>(
         &'a mut self,
-    ) -> UiComponent<'w, 's, 'a, UiNodeBundle, Self::InternalSpawner, St, usize> {
+    ) -> UiComponent<'w, 's, 'a, UiNodeBundleGenerator, Self::InternalSpawner, St, usize> {
         let styler = self.get_styler();
-        UiComponent::new(UiNodeBundle::default(), self.get_spawner(), styler)
+        UiComponent::new(UiNodeBundleGenerator::default(), self.get_spawner(), styler)
     }
 
     fn text<'a>(
@@ -21,13 +21,7 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
     ) -> UiComponent<'w, 's, 'a, UiTextBundle, Self::InternalSpawner, St, usize> {
         let styler = self.get_styler();
         UiComponent::new(
-            UiTextBundle {
-                node_bundle: TextBundle {
-                    text: Text::from_section(text, TextStyle::default()),
-                    ..default()
-                },
-                ..Default::default()
-            },
+            UiTextBundle::new(text),
             self.get_spawner(),
             styler,
         )
@@ -59,13 +53,6 @@ pub trait ExternalUiSpawner<'w, 's, St: Styler> {
             self.get_spawner(),
             styler,
         )
-    }
-
-    fn button<'a>(
-        &'a mut self,
-    ) -> UiComponent<'w, 's, 'a, ButtonBundle, Self::InternalSpawner, St, usize> {
-        let styler = self.get_styler();
-        UiComponent::new(ButtonBundle::default(), self.get_spawner(), styler)
     }
 }
 

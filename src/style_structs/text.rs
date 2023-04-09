@@ -1,3 +1,4 @@
+use bevy::text::BreakLineOn;
 use bevy::text::Font;
 
 use bevy::prelude::Handle;
@@ -9,7 +10,59 @@ use bevy::text::TextAlignment;
 use bevy::text::TextSection;
 use bevy::text::TextStyle;
 
+use crate::Editable;
+use crate::EditableOption;
+
 use super::StyleComponentApplier;
+
+#[derive(Clone, Default)]
+pub struct TextStyleEditable {
+    pub font: Option<Handle<Font>>,
+    pub font_size: Option<f32>,
+    pub color: Option<Color>,
+}
+
+impl Editable<TextStyle> for TextStyleEditable {
+    fn merge(&self, original: &TextStyle) -> TextStyle {
+        TextStyle {
+            font: self.font.unwrap_or(original.font),
+            font_size: self.font_size.unwrap_or(original.font_size),
+            color: self.color.unwrap_or(original.color),
+        }
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct TextSectionEditable {
+    pub value: Option<String>,
+    pub style: Option<TextStyleEditable>,
+}
+
+impl Editable<TextSection> for TextSectionEditable {
+    fn merge(&self, TextSection { value, style }: &TextSection) -> TextSection {
+        TextSection {
+            value: self.value.unwrap_or(value.clone()),
+            style: self.style.realize(style),
+        }
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct TextEditable {
+    pub sections: Option<Vec<TextSectionEditable>>,
+    pub alignment: Option<TextAlignment>,
+    pub linebreak_behaviour: Option<BreakLineOn>,
+}
+
+impl Editable<Text> for TextEditable {
+    fn merge(&self, Text { sections, alignment, linebreak_behaviour }: &Text) -> Text {
+        Text {
+            sections: sections.clone(),
+            alignment: self.alignment.unwrap_or(alignment.clone()),
+            linebreak_behaviour: self.linebreak_behaviour.unwrap_or(linebreak_behaviour.clone()),
+        }
+    }
+}
 
 pub trait TextStyling: StyleComponentApplier<TextStyle> + Sized {
     fn text_color(self, color: Color) -> Self {

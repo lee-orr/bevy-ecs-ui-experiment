@@ -1,13 +1,15 @@
 pub mod background_color;
 pub mod node;
 pub mod text;
+pub mod image;
 
 pub use background_color::*;
 pub use node::*;
 pub use text::*;
+pub use image::*;
 
 use bevy::{
-    prelude::{Component, Handle, Image},
+    prelude::{Component, },
     ui::*,
 };
 
@@ -70,23 +72,34 @@ impl Styler for NullStyler {
     }
 }
 
-pub trait ImageApplier: StyleComponentApplier<UiImage> + Sized {
-    fn texture(self, val: Handle<Image>) -> Self {
-        self.get_component(move |v| {
-            v.texture = val.clone();
-        })
-    }
-
-    fn flip(self, x: bool, y: bool) -> Self {
-        self.get_component(move |v| {
-            v.flip_x = x;
-            v.flip_y = y;
-        })
-    }
-}
-
-impl<T: StyleComponentApplier<UiImage> + Sized> ImageApplier for T {}
 
 pub trait RuntimeStyler<T>: Component + TypedStyler<T> {}
 
 pub trait InteractionStyler: Component + TypedStyler<Interaction> {}
+
+pub trait Editable<T: Default> : Clone + Default {
+    fn merge(&self, original: &T) -> T;
+
+    fn build(&self) -> T {
+        let default = T::default();
+        self.merge(&default)
+    }
+}
+
+pub trait EditableOption<T: Default, R: Editable<T>> {
+    fn realize(&self, input: &T) -> T;
+
+    fn realize_default(&self) -> T {
+        self.realize(&T::default())
+    }
+}
+
+impl<T: Default + Clone, R: Editable<T>> EditableOption<T, R> for Option<R> {
+    fn realize(&self, input: &T) -> T {
+        if let Some(v) = self {
+            v.merge(&input)
+        } else {
+            input.clone()
+        }
+    }
+}

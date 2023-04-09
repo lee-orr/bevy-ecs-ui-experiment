@@ -1,5 +1,6 @@
 use bevy::ecs::system::EntityCommands;
 
+use crate::BaseNodeGenerator;
 use crate::style_structs::StyleComponentApplier;
 use crate::UiComponentSpawner;
 use crate::UiComponentSpawnerActivator;
@@ -47,12 +48,16 @@ impl<
         S: InternalUiSpawner<'w, 's>,
         St: Styler,
         Id: Debug + PartialEq + Eq + Hash + Sync + Send + Clone + Copy,
-    > StyleComponentApplier<Inner> for UiComponent<'w, 's, 'a, Bg, S, St, Id>
+    > BaseNodeGenerator<Inner, Bg> for UiComponent<'w, 's, 'a, Bg, S, St, Id>
 {
-    fn get_component<T: FnMut(&mut Inner)>(mut self, apply: T) -> Self {
+    type Inner = Inner;
+    fn get_base_generator(&self) -> &Bg {
+        &self.value
+    }
+
+    fn get_base_generator_component<T: FnMut(&mut Inner)>(&mut self, apply: T) {
         let value = self.value.clone();
         self.value = value.get_component(apply);
-        self
     }
 }
 

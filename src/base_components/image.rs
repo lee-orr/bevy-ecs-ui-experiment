@@ -3,7 +3,7 @@ use bevy::{
     ui::{BackgroundColor, FocusPolicy, Style, UiImage, ZIndex},
 };
 
-use crate::{style_structs::StyleComponentApplier, UIQuery, UiBundleGeneratorStyler};
+use crate::{style_structs::StyleComponentApplier, UIQuery, UiBundleGeneratorStyler, UiNodeBundleGenerator, BaseNodeGenerator, UiBundleGenerator};
 
 pub type ImageComponents<'a> = (
     &'a mut Style,
@@ -19,44 +19,30 @@ pub type ImageQuery<'w, 's, 'a, T> = UIQuery<'w, 's, 'a, T, ImageComponents<'a>,
 #[derive(Component, Clone, Default)]
 pub struct ImageNode;
 
-#[derive(Bundle, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct UiImageBundle {
-    pub node_bundle: ImageBundle,
-    pub marker: ImageNode,
+    pub base: UiNodeBundleGenerator,
+    pub image: UiImage
 }
 
-impl StyleComponentApplier<BackgroundColor> for UiImageBundle {
-    fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.node_bundle.background_color);
-        self
+impl<Inner: Default> BaseNodeGenerator<Inner,UiNodeBundleGenerator> for UiImageBundle where UiNodeBundleGenerator: StyleComponentApplier<Inner> {
+    type Inner = Inner;
+    fn get_base_generator(&self) -> &UiNodeBundleGenerator {
+        &self.base
+    }
+
+    fn get_base_generator_component<T: FnMut(&mut Self::Inner)>(&mut self, apply: T) {
+        todo!()
     }
 }
 
-impl StyleComponentApplier<Style> for UiImageBundle {
-    fn get_component<T: FnMut(&mut Style)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.node_bundle.style);
-        self
-    }
-}
 
-impl StyleComponentApplier<FocusPolicy> for UiImageBundle {
-    fn get_component<T: FnMut(&mut FocusPolicy)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.node_bundle.focus_policy);
-        self
-    }
-}
-
-impl StyleComponentApplier<ZIndex> for UiImageBundle {
-    fn get_component<T: FnMut(&mut ZIndex)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.node_bundle.z_index);
-        self
-    }
-}
-
-impl StyleComponentApplier<Visibility> for UiImageBundle {
-    fn get_component<T: FnMut(&mut Visibility)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.node_bundle.visibility);
-        self
+impl UiBundleGenerator for UiImageBundle {
+    fn spawn<'l, 'w, 's, 'a>(
+        &self,
+        commands: &'l mut bevy::ecs::system::EntityCommands<'w, 's, 'a>,
+    ) -> &'l mut bevy::ecs::system::EntityCommands<'w, 's, 'a> {
+        self.base.spawn(commands).insert(self.image.clone())
     }
 }
 

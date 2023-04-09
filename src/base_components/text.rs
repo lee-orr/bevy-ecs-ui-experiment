@@ -1,10 +1,10 @@
 use bevy::{
     prelude::{Bundle, Component, Mut, TextBundle, Visibility},
-    text::Text,
+    text::{Text, TextStyle},
     ui::{BackgroundColor, FocusPolicy, Style, ZIndex},
 };
 
-use crate::{style_structs::StyleComponentApplier, UIQuery, UiBundleGeneratorStyler};
+use crate::{style_structs::StyleComponentApplier, UIQuery, UiBundleGeneratorStyler, UiNodeBundleGenerator, BaseNodeGenerator, UiBundleGenerator, TextEditable, TextSectionEditable, EditableOption};
 
 pub type TextComponents<'a> = (
     &'a mut Style,
@@ -20,50 +20,44 @@ pub type TextQuery<'w, 's, 'a, T> = UIQuery<'w, 's, 'a, T, TextComponents<'a>, T
 #[derive(Component, Clone, Default)]
 pub struct TextNode;
 
-#[derive(Bundle, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct UiTextBundle {
-    pub node_bundle: TextBundle,
-    pub marker: TextNode,
+    pub base: UiNodeBundleGenerator,
+    pub text: Option<TextEditable>
 }
 
-impl StyleComponentApplier<BackgroundColor> for UiTextBundle {
-    fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.node_bundle.background_color);
-        self
+impl UiTextBundle {
+    pub fn new(text: impl Into<String>) -> Self {
+        let mut text_editable = TextEditable::default();
+        text_editable.sections = Some(vec![TextSectionEditable { value: Some(text.into()), ..Default::default()}]);
+        UiTextBundle { base:  UiNodeBundleGenerator::default(), text: Some(text_editable) }
     }
 }
 
-impl StyleComponentApplier<Style> for UiTextBundle {
-    fn get_component<T: FnMut(&mut Style)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.node_bundle.style);
-        self
+impl<Inner: Default> BaseNodeGenerator<Inner,UiNodeBundleGenerator> for UiTextBundle where UiNodeBundleGenerator: StyleComponentApplier<Inner> {
+    type Inner = Inner;
+    fn get_base_generator(&self) -> &UiNodeBundleGenerator {
+        &self.base
+    }
+
+    fn get_base_generator_component<T: FnMut(&mut Self::Inner)>(&mut self, apply: T) {
+        todo!()
     }
 }
 
-impl StyleComponentApplier<FocusPolicy> for UiTextBundle {
-    fn get_component<T: FnMut(&mut FocusPolicy)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.node_bundle.focus_policy);
-        self
+
+impl UiBundleGenerator for UiTextBundle {
+    fn spawn<'l, 'w, 's, 'a>(
+        &self,
+        commands: &'l mut bevy::ecs::system::EntityCommands<'w, 's, 'a>,
+    ) -> &'l mut bevy::ecs::system::EntityCommands<'w, 's, 'a> {
+        self.base.spawn(commands).insert(self.text.realize_default())
     }
 }
 
-impl StyleComponentApplier<ZIndex> for UiTextBundle {
-    fn get_component<T: FnMut(&mut ZIndex)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.node_bundle.z_index);
-        self
-    }
-}
-
-impl StyleComponentApplier<Visibility> for UiTextBundle {
-    fn get_component<T: FnMut(&mut Visibility)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.node_bundle.visibility);
-        self
-    }
-}
-
-impl StyleComponentApplier<Text> for UiTextBundle {
-    fn get_component<T: FnMut(&mut Text)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.node_bundle.text);
+impl StyleComponentApplier<TextEditable> for UiTextBundle {
+    fn get_component<T: FnMut(&mut TextEditable)>(mut self, mut apply: T) -> Self {
+        apply(&mut self.text.get_or_insert(TextEditable::default()));
         self
     }
 }
