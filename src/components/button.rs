@@ -3,15 +3,19 @@ use bevy::{
     ui::{BackgroundColor, FocusPolicy, Style, UiImage, ZIndex},
 };
 
-use crate::{style_structs::StyleComponentApplier, UiBundleGeneratorStyler};
+use crate::{style::StyleComponentApplier, UiBundleGeneratorStyler};
 
 #[derive(Component)]
 pub struct ButtonNode;
 
+#[derive(Component)]
+pub struct ClickedEventEmitter<T: Send + Sync>(T);
+
 #[derive(Bundle)]
-pub struct UiButtonBundle {
+pub struct UiButtonBundle<T: Send + Sync + 'static> {
     node_bundle: ButtonBundle,
     marker: ButtonNode,
+    clicked: ClickedEventEmitter<T>,
 }
 
 impl StyleComponentApplier<BackgroundColor> for ButtonBundle {

@@ -54,13 +54,18 @@ fn setup(mut commands: Commands, assets: ResMut<AssetServer>) {
 
     commands
         .node()
-        .style(UiStyler::Base(font))
+        .style(UiStyler::Base(font.clone()))
         .bg(Color::rgb(1., 0.5, 0.2))
         .size(Size::all(Val::Px(400.)))
         .flex_direction(FlexDirection::Column)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::SpaceBetween)
         .with_children(|mut p| {
+            p.node()
+                .style(UiStyler::Heading(font.clone()))
+                .with_children(|mut p| {
+                    p.text("HEADING!");
+                });
             p.text("A IS NOT PRESSED").id(15);
             p.text("I don't change...").id(16);
             p.image(image).size(Size::all(Val::Px(150.))).id(16);

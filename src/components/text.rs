@@ -4,7 +4,7 @@ use bevy::{
     ui::{BackgroundColor, FocusPolicy, Style, ZIndex},
 };
 
-use crate::{style_structs::StyleComponentApplier, UIQuery, UiBundleGeneratorStyler};
+use crate::{style::StyleComponentApplier, UIQuery, UiBundleGeneratorStyler};
 
 pub type TextComponents<'a> = (
     &'a mut Style,

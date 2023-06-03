@@ -1,6 +1,6 @@
 use bevy::ecs::system::EntityCommands;
 
-use crate::style_structs::StyleComponentApplier;
+use crate::style::StyleComponentApplier;
 use crate::UiComponentSpawner;
 use crate::UiComponentSpawnerActivator;
 use crate::UiId;

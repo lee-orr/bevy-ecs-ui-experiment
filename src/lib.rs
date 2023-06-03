@@ -1,12 +1,12 @@
-pub mod base_components;
-pub mod style_structs;
+pub mod components;
+pub mod style;
 pub mod ui_bundle_spawner;
 pub mod ui_id;
 
 use bevy::prelude::*;
 
-pub use base_components::*;
-pub use style_structs::*;
+pub use components::*;
+pub use style::*;
 pub use ui_bundle_spawner::*;
 pub use ui_id::*;
 
