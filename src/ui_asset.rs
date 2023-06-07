@@ -1,6 +1,4 @@
-use bevy::{
-    reflect::{TypeUuid},
-};
+use bevy::reflect::TypeUuid;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TypeUuid)]
@@ -19,37 +17,37 @@ pub enum UiNode {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node {
     #[serde(rename = "$value", default)]
-    children: Vec<UiNode>,
+    pub children: Vec<UiNode>,
     #[serde(rename = "@name")]
-    name: Option<String>,
+    pub name: Option<String>,
     #[serde(rename = "@class")]
-    class: Option<String>,
+    pub class: Option<String>,
     #[serde(rename = "@style")]
-    style: Option<String>,
+    pub style: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Image {
     #[serde(rename = "@name")]
-    name: Option<String>,
+    pub name: Option<String>,
     #[serde(rename = "@class")]
-    class: Option<String>,
+    pub class: Option<String>,
     #[serde(rename = "@style")]
-    style: Option<String>,
+    pub style: Option<String>,
     #[serde(rename = "@src")]
-    image_path: String,
+    pub image_path: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Text {
     #[serde(rename = "@name")]
-    name: Option<String>,
+    pub name: Option<String>,
     #[serde(rename = "@class")]
-    class: Option<String>,
+    pub class: Option<String>,
     #[serde(rename = "@style")]
-    style: Option<String>,
+    pub style: Option<String>,
     #[serde(alias = "@val", rename = "$value")]
-    text: String,
+    pub text: String,
 }
 
 #[cfg(test)]

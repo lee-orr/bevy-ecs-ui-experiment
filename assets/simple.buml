@@ -1,6 +1,9 @@
 <node name="test">
     <node class="class1 class2">
         <img class="img_class" name="image" src="test-image.png"/>
-        <txt class="text_class" style="font: libre-baskerville/LibreBaskerville-Regular.ttf;" val="my text"/>
+                WHAT IS UP MAN
+                YO!
+        <txt class="text_class" style="font: libre-baskerville/LibreBaskerville-Regular.ttf;">my text</txt>
+        Oh No :)
     </node>
 </node>
