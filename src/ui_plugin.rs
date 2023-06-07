@@ -2,7 +2,6 @@ use std::marker::PhantomData;
 
 use bevy::{ecs::system::EntityCommands, prelude::*};
 use bevy_ecss::{Class, StyleSheet, StyleSheetAsset};
-use serde::Serialize;
 
 use crate::{
     ui_asset::{Image, Node, Text},
@@ -49,7 +48,7 @@ pub struct UiHandle<T: UIState> {
 #[derive(Resource)]
 struct LoadUiHandle<T: UIState>(String, String, PhantomData<T>);
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct InitializedUi<T: UIState>(PhantomData<T>);
 
 impl<T: UIState> InitializedUi<T> {
@@ -95,10 +94,10 @@ fn spawn_ui<T: UIState>(
             style: _,
         }) => {
             if let Some(name) = name {
-                e.insert(Name::new(name.process_unchecked(state)));
+                e.insert(Name::new(name.process(state)));
             }
             if let Some(class) = class {
-                e.insert(Class::new(class.process_unchecked(state)));
+                e.insert(Class::new(class.process(state)));
             }
             e.insert(NodeBundle::default());
             e.with_children(|p| {
@@ -115,13 +114,12 @@ fn spawn_ui<T: UIState>(
             image_path,
         }) => {
             if let Some(name) = name {
-                e.insert(Name::new(name.process_unchecked(state)));
+                e.insert(Name::new(name.process(state)));
             }
             if let Some(class) = class {
-                e.insert(Class::new(class.process_unchecked(state)));
+                e.insert(Class::new(class.process(state)));
             }
-            let handle: Handle<bevy::prelude::Image> =
-                asset_server.load(image_path.process_unchecked(state));
+            let handle: Handle<bevy::prelude::Image> = asset_server.load(image_path.process(state));
             e.insert(ImageBundle {
                 image: UiImage {
                     texture: handle,
@@ -137,19 +135,19 @@ fn spawn_ui<T: UIState>(
             text,
         }) => {
             if let Some(name) = name {
-                e.insert(Name::new(name.process_unchecked(state)));
+                e.insert(Name::new(name.process(state)));
             }
             if let Some(class) = class {
-                e.insert(Class::new(class.process_unchecked(state)));
+                e.insert(Class::new(class.process(state)));
             }
             e.insert(TextBundle::from_section(
-                text.process_unchecked(state),
+                text.process(state),
                 TextStyle::default(),
             ));
         }
         UiNode::RawText(text) => {
             e.insert(TextBundle::from_section(
-                text.process_unchecked(state),
+                text.process(state),
                 TextStyle::default(),
             ));
         }
@@ -214,6 +212,6 @@ fn hot_reload_assets<T: UIState>(
     }
 }
 
-pub trait UIState: Component + Serialize {}
+pub trait UIState: Component + Reflect {}
 
-impl<T: Component + Serialize> UIState for T {}
+impl<T: Component + Reflect> UIState for T {}

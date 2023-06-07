@@ -55,7 +55,11 @@ pub struct Text {
 #[cfg(test)]
 mod test {
     use super::*;
+    use bevy::{prelude::Component, reflect::Reflect};
     use quick_xml::de::from_str;
+
+    #[derive(Component, Reflect)]
+    pub struct NoContext;
 
     #[test]
     fn can_deserialize_a_single_node() {
@@ -74,7 +78,7 @@ mod test {
         let parsed: UiNode = from_str(asset).unwrap();
         let UiNode::Node(Node { name, class, style, children }) = parsed else { panic!("Not a node") };
         assert_eq!(children.len(), 0);
-        assert_eq!(name.unwrap().process(&()).unwrap(), "test");
+        assert_eq!(name.unwrap().process(&NoContext), "test");
         assert!(class.is_none());
         assert!(style.is_none());
     }
@@ -85,7 +89,7 @@ mod test {
         let parsed: UiNode = from_str(asset).unwrap();
         let UiNode::Node(Node { name, class, style, children }) = parsed else { panic!("Not a node") };
         assert_eq!(children.len(), 0);
-        assert_eq!(class.unwrap().process(&()).unwrap(), "test");
+        assert_eq!(class.unwrap().process(&NoContext), "test");
         assert!(name.is_none());
         assert!(style.is_none());
     }
@@ -96,7 +100,7 @@ mod test {
         let parsed: UiNode = from_str(asset).unwrap();
         let UiNode::Node(Node { name, class, style, children }) = parsed else { panic!("Not a node") };
         assert_eq!(children.len(), 0);
-        assert_eq!(style.unwrap().process(&()).unwrap(), "test");
+        assert_eq!(style.unwrap().process(&NoContext), "test");
         assert!(name.is_none());
         assert!(class.is_none());
     }
@@ -117,7 +121,7 @@ mod test {
         let asset = r#"<img src="test.png"></img>"#;
         let parsed: UiNode = from_str(asset).unwrap();
         let UiNode::Image(Image { name, class, style, image_path }) = parsed else { panic!("Not a node") };
-        assert_eq!(image_path.process(&()).unwrap(), "test.png");
+        assert_eq!(image_path.process(&NoContext), "test.png");
         assert!(name.is_none());
         assert!(class.is_none());
         assert!(style.is_none());
@@ -128,7 +132,7 @@ mod test {
         let asset = r#"<txt val="some text"></txt>"#;
         let parsed: UiNode = from_str(asset).unwrap();
         let UiNode::Text(Text { name, class, style, text }) = parsed else { panic!("Not a node") };
-        assert_eq!(text.process(&()).unwrap(), "some text");
+        assert_eq!(text.process(&NoContext), "some text");
         assert!(name.is_none());
         assert!(class.is_none());
         assert!(style.is_none());
@@ -139,7 +143,7 @@ mod test {
         let asset = r#"<txt>some text</txt>"#;
         let parsed: UiNode = from_str(asset).unwrap();
         let UiNode::Text(Text { name, class, style, text }) = parsed else { panic!("Not a node") };
-        assert_eq!(text.process(&()).unwrap(), "some text");
+        assert_eq!(text.process(&NoContext), "some text");
         assert!(name.is_none());
         assert!(class.is_none());
         assert!(style.is_none());
@@ -151,7 +155,7 @@ mod test {
         let parsed: UiNode = from_str(asset).unwrap();
         let UiNode::Node(Node { name: _, class: _, style: _, children}) = parsed else { panic!("Not a node")};
         let UiNode::RawText(text) = children.get(0).unwrap() else { panic!("Not a node") };
-        assert_eq!(text.process(&()).unwrap(), "some text");
+        assert_eq!(text.process(&NoContext), "some text");
     }
 
     #[test]
@@ -167,27 +171,27 @@ mod test {
         "#;
         let parsed: UiNode = from_str(asset).unwrap();
         let UiNode::Node(Node { name, class: _, style: _, children}) = parsed else { panic!("Not a node")};
-        assert_eq!(name.unwrap().process(&()).unwrap(), "test");
+        assert_eq!(name.unwrap().process(&NoContext), "test");
 
         let UiNode::Node(Node { name: _, class, style: _, children}) = children.get(0).cloned().unwrap() else { panic!("Not a node")};
-        assert_eq!(class.unwrap().process(&()).unwrap(), "class1 class2");
+        assert_eq!(class.unwrap().process(&NoContext), "class1 class2");
 
         {
             let UiNode::Image(Image { name, class, style: _, image_path}) = children.get(0).cloned().unwrap() else { panic!("Not a node")};
-            assert_eq!(image_path.process(&()).unwrap(), "test-image.png");
-            assert_eq!(class.unwrap().process(&()).unwrap(), "img_class");
-            assert_eq!(name.unwrap().process(&()).unwrap(), "image");
+            assert_eq!(image_path.process(&NoContext), "test-image.png");
+            assert_eq!(class.unwrap().process(&NoContext), "img_class");
+            assert_eq!(name.unwrap().process(&NoContext), "image");
         }
         {
             let UiNode::RawText(text) = children.get(1).unwrap() else { panic!("not a text")};
-            assert_eq!(text.process(&()).unwrap(), "some raw text");
+            assert_eq!(text.process(&NoContext), "some raw text");
         }
         {
             let UiNode::Text(Text { name: _, class, style, text}) = children.get(2).cloned().unwrap() else { panic!("Not a node")};
-            assert_eq!(text.process(&()).unwrap(), "my text");
-            assert_eq!(class.unwrap().process(&()).unwrap(), "text_class");
+            assert_eq!(text.process(&NoContext), "my text");
+            assert_eq!(class.unwrap().process(&NoContext), "text_class");
             assert_eq!(
-                style.unwrap().process(&()).unwrap(),
+                style.unwrap().process(&NoContext),
                 "font: libre-baskerville/LibreBaskerville-Regular.ttf;"
             );
         }

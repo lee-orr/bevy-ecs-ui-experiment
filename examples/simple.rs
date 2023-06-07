@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use bevy_ecs_ui_experiment::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use serde::Serialize;
 
 fn main() {
     App::new()
@@ -17,7 +16,7 @@ fn main() {
         .run();
 }
 
-#[derive(Component, Serialize)]
+#[derive(Component, Reflect)]
 pub struct MyUi;
 
 fn setup(mut commands: Commands, _assets: ResMut<AssetServer>) {
