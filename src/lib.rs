@@ -1,3 +1,4 @@
+pub mod string_expression;
 pub mod ui_asset;
 pub mod ui_plugin;
 

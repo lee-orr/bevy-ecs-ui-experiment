@@ -12,6 +12,7 @@ bevy_common_assets = { version = "0.6", features = ["xml"]}
 serde = { version = "1", features = ["derive"]}
 tuple_utils = "*"
 quick-xml = { version = "0.28", features = ["serialize"]}
+evalexpr = {version = "11", features = ["serde_support"]}
 
 [dev-dependencies]
 
