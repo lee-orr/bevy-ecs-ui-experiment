@@ -7,7 +7,11 @@ edition = "2021"
 
 [dependencies]
 bevy = { version = "0.10", default-features = false, features = ["bevy_ui", "bevy_text", "bevy_render", "bevy_asset"]}
+bevy_ecss = "0.3"
+bevy_common_assets = { version = "0.6", features = ["xml"]}
+serde = { version = "1", features = ["derive"]}
 tuple_utils = "*"
+quick-xml = { version = "0.28", features = ["serialize"]}
 
 [dev-dependencies]
 

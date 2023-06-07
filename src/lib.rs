@@ -1,17 +1,13 @@
-pub mod components;
-pub mod style;
-pub mod ui_bundle_spawner;
-pub mod ui_id;
+pub mod ui_asset;
 
 use bevy::prelude::*;
 
-pub use components::*;
-pub use style::*;
-pub use ui_bundle_spawner::*;
-pub use ui_id::*;
+use bevy_ecss::EcssPlugin;
 
 pub struct EcsUiPlugin;
 
 impl Plugin for EcsUiPlugin {
-    fn build(&self, _app: &mut App) {}
+    fn build(&self, app: &mut App) {
+        app.add_plugin(EcssPlugin::default());
+    }
 }
