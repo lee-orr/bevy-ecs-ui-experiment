@@ -12,7 +12,8 @@ pub struct UiPlugin<T: UIState>(PhantomData<T>, Option<(String, String)>);
 
 impl<T: UIState> Plugin for UiPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.add_system(display_ui::<T>.in_base_set(CoreSet::PostUpdate))
+        app.add_system(display_ui::<T>.in_base_set(CoreSet::Last))
+            .add_system(update_state::<T>.in_base_set(CoreSet::PostUpdate))
             .add_system(hot_reload_assets::<T>.in_base_set(CoreSet::PreUpdate));
         if let Some((uri, style)) = &self.1 {
             app.insert_resource(LoadUiHandle::<T>(uri.clone(), style.clone(), PhantomData));
@@ -204,6 +205,18 @@ fn hot_reload_assets<T: UIState>(
         return;
     }
 
+    for e in ui.iter() {
+        commands
+            .entity(e)
+            .remove::<InitializedUi<T>>()
+            .despawn_descendants();
+    }
+}
+
+fn update_state<T: UIState>(
+    mut commands: Commands,
+    ui: Query<Entity, (With<InitializedUi<T>>, Changed<T>)>,
+) {
     for e in ui.iter() {
         commands
             .entity(e)

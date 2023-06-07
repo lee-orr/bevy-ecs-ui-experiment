@@ -1,0 +1,9 @@
+<node name="test">
+    <node class="class1 class2">
+        <img class="img_class" name="image" src="test-image.png"/>
+        Press Enter to add "!" below:
+                {{test()}}
+        <txt class="text_class" style="font: libre-baskerville/LibreBaskerville-Regular.ttf;">my text</txt>
+        Oh No :)
+    </node>
+</node>
