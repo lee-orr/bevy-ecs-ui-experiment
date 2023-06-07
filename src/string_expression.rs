@@ -1,9 +1,6 @@
 use std::str::FromStr;
 
-use bevy::{
-    math::bool,
-    reflect::{GetPath},
-};
+use bevy::{math::bool, reflect::GetPath};
 use evalexpr::Context;
 use serde::{de, Deserialize, Deserializer, Serialize};
 
@@ -20,11 +17,16 @@ impl StringExpression {
             .iter()
             .fold(Vec::with_capacity(len), |mut v, (expr, is_expr)| {
                 if *is_expr {
-                    let str = evalexpr::eval_string_with_context(expr.as_str(), &ctx);
+                    let str = evalexpr::eval_with_context(expr.as_str(), &ctx);
                     if let Err(e) = &str {
                         eprintln!("Eval Error: {e:+?}");
                     }
-                    v.push(str.unwrap_or_default());
+                    let val = str.unwrap_or(evalexpr::Value::Empty);
+                    let val = match &val {
+                        evalexpr::Value::String(s) => s.to_string(),
+                        _ => val.to_string(),
+                    };
+                    v.push(val);
                 } else {
                     v.push(expr.to_string());
                 }
@@ -37,7 +39,20 @@ impl StringExpression {
 impl FromStr for StringExpression {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(vec![(s.to_string(), false)]))
+        let values = s
+            .split("}}")
+            .flat_map(|v| {
+                let Some((before, after)) = v.split_once("{{") else {
+                return [Some((v.to_string(), false)), None];
+            };
+                [
+                    Some((before.to_string(), false)),
+                    Some((after.to_string(), true)),
+                ]
+            })
+            .flatten()
+            .collect();
+        Ok(Self(values))
     }
 }
 
@@ -138,10 +153,33 @@ mod test {
     use super::*;
     use bevy::prelude::*;
 
-    #[derive(Component, Reflect)]
+    #[derive(Component, Reflect, Default)]
     struct State {
         number: i32,
         string: String,
+    }
+
+    #[test]
+    fn parses_a_string_without_an_expression_correctly() {
+        let expression = StringExpression::from_str("This has no expressions 1 + 2!").unwrap();
+        assert_eq!(expression.0.len(), 1);
+        assert_eq!(
+            expression.0.get(0).unwrap().0,
+            "This has no expressions 1 + 2!"
+        );
+        assert!(!expression.0.get(0).unwrap().1);
+    }
+
+    #[test]
+    fn parses_a_string_with_an_expression_correctly() {
+        let expression = StringExpression::from_str("This has expressions {{1 + 2}}!").unwrap();
+        assert_eq!(expression.0.len(), 3);
+        assert_eq!(expression.0.get(0).unwrap().0, "This has expressions ");
+        assert!(!expression.0.get(0).unwrap().1);
+        assert_eq!(expression.0.get(1).unwrap().0, "1 + 2");
+        assert!(expression.0.get(1).unwrap().1);
+        assert_eq!(expression.0.get(2).unwrap().0, "!");
+        assert!(!expression.0.get(2).unwrap().1);
     }
 
     #[test]
@@ -177,5 +215,13 @@ mod test {
         let result = expression.process(&state);
 
         assert_eq!(result, "7 is the result of the Test");
+    }
+
+    #[test]
+    fn processes_a_parsed_string_correctly() {
+        let state = State::default();
+        let expression = StringExpression::from_str("This has expressions {{1 + 2}}!").unwrap();
+        let result = expression.process(&state);
+        assert_eq!(result, "This has expressions 3!");
     }
 }
