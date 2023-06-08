@@ -1,7 +1,7 @@
 use bevy::reflect::TypeUuid;
 use serde::{Deserialize, Serialize};
 
-use crate::string_expression::StringExpression;
+use crate::{string_expression::StringExpression, SimpleExpression};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TypeUuid)]
 #[uuid = "2c2788a6-ccfc-4f77-9c58-2f08c38e7ea0"]
@@ -14,6 +14,8 @@ pub enum UiNode {
     Text(Text),
     #[serde(rename = "$text")]
     RawText(StringExpression),
+    #[serde(rename = "if")]
+    Conditional(Conditional),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,6 +54,15 @@ pub struct Text {
     pub text: StringExpression,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Conditional {
+    #[serde(rename = "@condition")]
+    pub condition: SimpleExpression,
+    #[serde(rename = "true")]
+    pub if_true: Box<UiNode>,
+    #[serde(rename = "false")]
+    pub if_false: Option<Box<UiNode>>,
+}
 #[cfg(test)]
 mod test {
     use crate::Expression;
