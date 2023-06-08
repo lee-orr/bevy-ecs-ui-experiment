@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
-use bevy::{math::bool, reflect::GetPath};
-use evalexpr::Context;
+use bevy::math::bool;
+
 use serde::{de, Deserialize, Deserializer, Serialize};
 
 use crate::{expression::*, UIState};
@@ -74,88 +74,6 @@ impl<'de> Deserialize<'de> for StringExpression {
     {
         let s = String::deserialize(deserializer)?;
         FromStr::from_str(&s).map_err(de::Error::custom)
-    }
-}
-
-struct InternalParser<'a, T: UIState>(&'a T);
-
-impl<'a, T: UIState> Context for InternalParser<'a, T> {
-    fn get_value(&self, _identifier: &str) -> Option<&evalexpr::Value> {
-        None
-    }
-
-    fn call_function(
-        &self,
-        identifier: &str,
-        argument: &evalexpr::Value,
-    ) -> evalexpr::EvalexprResult<evalexpr::Value> {
-        let path = match argument.as_string() {
-            Ok(v) => format!("{identifier}.{v}"),
-            Err(_) => identifier.to_string(),
-        };
-        println!("Parsing Expression at path: {path}");
-        let Ok(r) = self.0.reflect_path(&path) else {
-            eprintln!("No such path");
-            return
-            evalexpr::EvalexprResult::Err(evalexpr::EvalexprError::FunctionIdentifierNotFound(
-                path
-            )) };
-        if let Some(r) = r.downcast_ref::<bool>() {
-            println!("got a bool {r}");
-            Ok(evalexpr::Value::Boolean(*r))
-        } else if let Some(r) = r.downcast_ref::<String>() {
-            println!("got a string {r}");
-            Ok(evalexpr::Value::String(r.to_string()))
-        } else if let Some(r) = r.downcast_ref::<f32>() {
-            println!("got a float {r}");
-            Ok((*r as f64).into())
-        } else if let Some(r) = r.downcast_ref::<f64>() {
-            println!("got a float {r}");
-            Ok((*r).into())
-        } else if let Some(r) = r.downcast_ref::<i8>() {
-            println!("got an int {r}");
-            Ok((*r as i64).into())
-        } else if let Some(r) = r.downcast_ref::<i16>() {
-            println!("got an int {r}");
-            Ok((*r as i64).into())
-        } else if let Some(r) = r.downcast_ref::<i32>() {
-            println!("got an int {r}");
-            Ok((*r as i64).into())
-        } else if let Some(r) = r.downcast_ref::<i64>() {
-            println!("got an int {r}");
-            Ok((*r).into())
-        } else if let Some(r) = r.downcast_ref::<u8>() {
-            println!("got an int {r}");
-            Ok((*r as i64).into())
-        } else if let Some(r) = r.downcast_ref::<u16>() {
-            println!("got an int {r}");
-            Ok((*r as i64).into())
-        } else if let Some(r) = r.downcast_ref::<u32>() {
-            println!("got an int {r}");
-            Ok((*r as i64).into())
-        } else if let Some(r) = r.downcast_ref::<u64>() {
-            println!("got an int {r}");
-            Ok((*r as i64).into())
-        } else if let Some(r) = r.downcast_ref::<isize>() {
-            println!("got an int {r}");
-            Ok((*r as i64).into())
-        } else if let Some(r) = r.downcast_ref::<usize>() {
-            println!("got an int {r}");
-            Ok((*r as i64).into())
-        } else {
-            eprintln!("Couldn't process state");
-            evalexpr::EvalexprResult::Err(evalexpr::EvalexprError::CustomMessage(
-                "couldn't process state".to_string(),
-            ))
-        }
-    }
-
-    fn are_builtin_functions_disabled(&self) -> bool {
-        false
-    }
-
-    fn set_builtin_functions_disabled(&mut self, _disabled: bool) -> evalexpr::EvalexprResult<()> {
-        evalexpr::EvalexprResult::Err(evalexpr::EvalexprError::ContextNotMutable)
     }
 }
 
