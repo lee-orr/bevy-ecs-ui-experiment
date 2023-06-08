@@ -4,55 +4,66 @@ use bevy::{math::bool, reflect::GetPath};
 use evalexpr::Context;
 use serde::{de, Deserialize, Deserializer, Serialize};
 
-use crate::UIState;
+use crate::{expression::*, UIState};
 
 #[derive(Debug, Clone, Serialize)]
-pub struct StringExpression(Vec<(String, bool)>);
+pub enum StringExpression {
+    Value(String),
+    Expression(Vec<(String, bool)>),
+}
 
-impl StringExpression {
-    pub fn process<T: UIState>(&self, context: &T) -> String {
-        let len = self.0.len();
-        let ctx = InternalParser(context);
-        self.0
-            .iter()
-            .fold(Vec::with_capacity(len), |mut v, (expr, is_expr)| {
-                if *is_expr {
-                    let str = evalexpr::eval_with_context(expr.as_str(), &ctx);
-                    if let Err(e) = &str {
-                        eprintln!("Eval Error: {e:+?}");
-                    }
-                    let val = str.unwrap_or(evalexpr::Value::Empty);
-                    let val = match &val {
-                        evalexpr::Value::String(s) => s.to_string(),
-                        _ => val.to_string(),
-                    };
-                    v.push(val);
-                } else {
-                    v.push(expr.to_string());
-                }
-                v
-            })
-            .join("")
+impl Expression<String> for StringExpression {
+    fn process<T: UIState>(&self, context: &T) -> String {
+        match self {
+            StringExpression::Value(s) => s.to_owned(),
+            StringExpression::Expression(v) => {
+                let len = v.len();
+                let ctx = InternalParser(context);
+                v.iter()
+                    .fold(Vec::with_capacity(len), |mut v, (expr, is_expr)| {
+                        if *is_expr {
+                            let str = evalexpr::eval_with_context(expr.as_str(), &ctx);
+                            if let Err(e) = &str {
+                                eprintln!("Eval Error: {e:+?}");
+                            }
+                            let val = str.unwrap_or(evalexpr::Value::Empty);
+                            let val = match &val {
+                                evalexpr::Value::String(s) => s.to_string(),
+                                _ => val.to_string(),
+                            };
+                            v.push(val);
+                        } else {
+                            v.push(expr.to_string());
+                        }
+                        v
+                    })
+                    .join("")
+            }
+        }
     }
 }
 
 impl FromStr for StringExpression {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let values = s
-            .split("}}")
-            .flat_map(|v| {
-                let Some((before, after)) = v.split_once("{{") else {
-                return [Some((v.to_string(), false)), None];
-            };
-                [
-                    Some((before.to_string(), false)),
-                    Some((after.to_string(), true)),
-                ]
-            })
-            .flatten()
-            .collect();
-        Ok(Self(values))
+        if !s.contains("{{") {
+            Ok(Self::Value(s.to_string()))
+        } else {
+            let values = s
+                .split("}}")
+                .flat_map(|v| {
+                    let Some((before, after)) = v.split_once("{{") else {
+                    return [Some((v.to_string(), false)), None];
+                };
+                    [
+                        Some((before.to_string(), false)),
+                        Some((after.to_string(), true)),
+                    ]
+                })
+                .flatten()
+                .collect();
+            Ok(Self::Expression(values))
+        }
     }
 }
 
@@ -161,25 +172,20 @@ mod test {
 
     #[test]
     fn parses_a_string_without_an_expression_correctly() {
-        let expression = StringExpression::from_str("This has no expressions 1 + 2!").unwrap();
-        assert_eq!(expression.0.len(), 1);
-        assert_eq!(
-            expression.0.get(0).unwrap().0,
-            "This has no expressions 1 + 2!"
-        );
-        assert!(!expression.0.get(0).unwrap().1);
+        let StringExpression::Value(expression) = StringExpression::from_str("This has no expressions 1 + 2!").unwrap() else { panic!("Parsed as an expression")};
+        assert_eq!(expression, "This has no expressions 1 + 2!");
     }
 
     #[test]
     fn parses_a_string_with_an_expression_correctly() {
-        let expression = StringExpression::from_str("This has expressions {{1 + 2}}!").unwrap();
-        assert_eq!(expression.0.len(), 3);
-        assert_eq!(expression.0.get(0).unwrap().0, "This has expressions ");
-        assert!(!expression.0.get(0).unwrap().1);
-        assert_eq!(expression.0.get(1).unwrap().0, "1 + 2");
-        assert!(expression.0.get(1).unwrap().1);
-        assert_eq!(expression.0.get(2).unwrap().0, "!");
-        assert!(!expression.0.get(2).unwrap().1);
+        let StringExpression::Expression(expression) = StringExpression::from_str("This has expressions {{1 + 2}}!").unwrap() else { panic!("Parsed as a string")};
+        assert_eq!(expression.len(), 3);
+        assert_eq!(expression.get(0).unwrap().0, "This has expressions ");
+        assert!(!expression.get(0).unwrap().1);
+        assert_eq!(expression.get(1).unwrap().0, "1 + 2");
+        assert!(expression.get(1).unwrap().1);
+        assert_eq!(expression.get(2).unwrap().0, "!");
+        assert!(!expression.get(2).unwrap().1);
     }
 
     #[test]
@@ -189,10 +195,9 @@ mod test {
             string: "Test".to_string(),
         };
 
-        let expression = StringExpression(vec![(
+        let expression = StringExpression::Value(
             "(number() + 2).to_string() + \" is the result of the \" + string()".to_string(),
-            false,
-        )]);
+        );
         let result = expression.process(&state);
 
         assert_eq!(
@@ -208,7 +213,7 @@ mod test {
             string: "Test".to_string(),
         };
 
-        let expression = StringExpression(vec![(
+        let expression = StringExpression::Expression(vec![(
             "str::from(number() + 2) + \" is the result of the \" + string()".to_string(),
             true,
         )]);

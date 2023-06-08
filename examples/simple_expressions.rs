@@ -16,7 +16,7 @@ fn main() {
         .run();
 }
 
-#[derive(Component, Reflect)]
+#[derive(Component, Reflect, Debug)]
 pub struct MyUi {
     test: String,
 }
@@ -31,6 +31,7 @@ fn setup(mut commands: Commands, _assets: ResMut<AssetServer>) {
 fn adjust_style(input: Res<Input<KeyCode>>, mut ui: Query<&mut MyUi>) {
     if input.just_pressed(KeyCode::Return) {
         for mut ui in ui.iter_mut() {
+            info!("Changin UI - {ui:?}");
             ui.test = format!("{}!", ui.test);
         }
     }

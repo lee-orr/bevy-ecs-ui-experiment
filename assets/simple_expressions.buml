@@ -3,7 +3,7 @@
         <img class="img_class" name="image" src="test-image.png"/>
         Press Enter to add "!" below:
                 {{test()}}
-        <txt class="text_class" style="font: libre-baskerville/LibreBaskerville-Regular.ttf;">my text</txt>
+        <txt name="text" class="text_class" style="font: libre-baskerville/LibreBaskerville-Regular.ttf;">my text: {{test()}}</txt>
         Oh No :)
     </node>
 </node>

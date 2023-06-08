@@ -18,7 +18,7 @@
     font: "libre-baskerville/LibreBaskerville-Bold.ttf";
 }
 
-text.text_class {
+text#text.text_class {
     font: "libre-baskerville/LibreBaskerville-Regular.ttf";
     font-size: 30;
     color: blue;

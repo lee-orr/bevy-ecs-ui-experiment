@@ -54,6 +54,8 @@ pub struct Text {
 
 #[cfg(test)]
 mod test {
+    use crate::Expression;
+
     use super::*;
     use bevy::{prelude::Component, reflect::Reflect};
     use quick_xml::de::from_str;
