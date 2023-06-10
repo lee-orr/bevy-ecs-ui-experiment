@@ -11,6 +11,7 @@ use bevy_ecss::EcssPlugin;
 
 pub use expression::*;
 pub use ui_asset::UiNode;
+use ui_asset::UiNodeTree;
 pub use ui_plugin::{UIState, UiPlugin};
 
 pub struct EcsUiPlugin;
@@ -18,6 +19,6 @@ pub struct EcsUiPlugin;
 impl Plugin for EcsUiPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(EcssPlugin::default())
-            .add_plugin(XmlAssetPlugin::<UiNode>::new(&["buml"]));
+            .add_plugin(XmlAssetPlugin::<UiNodeTree>::new(&["buml"]));
     }
 }

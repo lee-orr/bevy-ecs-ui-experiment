@@ -7,7 +7,7 @@ use crate::{
     expression::Expression,
     reactive_expression_handlers::{ReactiveComponentExpressionHandler, ReactiveExpressionPlugin},
     string_expression::StringExpression,
-    ui_asset::{Conditional, Image, Node, Text},
+    ui_asset::{Conditional, Image, Node, Text, UiNodeTree},
     UiNode,
 };
 
@@ -44,7 +44,7 @@ impl<T: UIState> Default for UiPlugin<T> {
 
 #[derive(Resource)]
 pub struct UiHandle<T: UIState> {
-    pub handle: Handle<UiNode>,
+    pub handle: Handle<UiNodeTree>,
     pub style: Handle<StyleSheetAsset>,
     phantom: PhantomData<T>,
 }
@@ -63,21 +63,22 @@ impl<T: UIState> InitializedUi<T> {
 
 fn display_ui<T: UIState>(
     mut commands: Commands,
-    assets: Res<Assets<UiNode>>,
+    assets: Res<Assets<UiNodeTree>>,
     ui: Query<(Entity, &T), Without<InitializedUi<T>>>,
     handle: Option<Res<UiHandle<T>>>,
     asset_server: Res<AssetServer>,
 ) {
     let Some(handle) = handle else { return; };
     let sheet = &handle.style;
-    let Some(asset) = assets.get(&handle.handle) else { return; };
+    let Some(tree) = assets.get(&handle.handle) else { return; };
+    let Some(root) = tree.0.get(0) else { return; };
 
     for (entity, state) in ui.iter() {
         let mut cmd = commands.entity(entity);
         cmd.insert(InitializedUi::<T>::new());
         cmd.insert(StyleSheet::new(sheet.clone()));
         cmd.insert(NodeBundle::default());
-        spawn_ui(entity, &mut cmd, asset, state, asset_server.as_ref());
+        spawn_ui(entity, &mut cmd, root, state, asset_server.as_ref(), tree);
     }
 }
 
@@ -87,6 +88,7 @@ fn spawn_ui<T: UIState>(
     node: &UiNode,
     state: &T,
     asset_server: &AssetServer,
+    tree: &UiNodeTree,
 ) -> Entity {
     match node {
         UiNode::Node(Node {
@@ -99,8 +101,11 @@ fn spawn_ui<T: UIState>(
             e.insert(NodeBundle::default());
             e.with_children(|p| {
                 for child in children.iter() {
+                    let Some(child) = tree.0.get(*child) else {
+                        continue;
+                    };
                     let mut e = p.spawn_empty();
-                    let _ = spawn_ui(root, &mut e, child, state, asset_server);
+                    let _ = spawn_ui(root, &mut e, child, state, asset_server, tree);
                 }
             });
         }
@@ -168,6 +173,7 @@ fn spawn_ui<T: UIState>(
             if_true,
             if_false,
         }) => {}
+        UiNode::Empty => {}
     }
     e.id()
 }
@@ -211,7 +217,7 @@ fn load_ui_on_startup<T: UIState>(
     asset_server: Res<AssetServer>,
 ) {
     if let Some(load) = load {
-        let handle: Handle<UiNode> = asset_server.load(&load.0);
+        let handle: Handle<UiNodeTree> = asset_server.load(&load.0);
         let style: Handle<StyleSheetAsset> = asset_server.load(&load.1);
         commands.insert_resource(UiHandle {
             handle,
@@ -224,7 +230,7 @@ fn load_ui_on_startup<T: UIState>(
 
 fn hot_reload_assets<T: UIState>(
     mut commands: Commands,
-    mut ev_node_asset: EventReader<AssetEvent<UiNode>>,
+    mut ev_node_asset: EventReader<AssetEvent<UiNodeTree>>,
     mut ev_style_asset: EventReader<AssetEvent<StyleSheetAsset>>,
     handle: Option<Res<UiHandle<T>>>,
     ui: Query<Entity, With<InitializedUi<T>>>,
