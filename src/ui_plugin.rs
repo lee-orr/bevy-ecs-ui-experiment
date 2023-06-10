@@ -1,11 +1,13 @@
 use std::marker::PhantomData;
 
-use bevy::{ecs::system::EntityCommands, prelude::*};
+use bevy::prelude::*;
 use bevy_ecss::{Class, StyleSheet, StyleSheetAsset};
 
 use crate::{
     expression::Expression,
-    reactive_expression_handlers::{ReactiveComponentExpressionHandler, ReactiveExpressionPlugin},
+    reactive_expression_handlers::{
+        GetCachedExpressionHandlers, GetExpressionHandlers, ReactiveExpressionPlugin,
+    },
     string_expression::StringExpression,
     ui_asset::{Image, Node, Text, UiNodeTree},
     UiNode,
@@ -78,13 +80,22 @@ fn display_ui<T: UIState>(
         cmd.insert(InitializedUi::<T>::new());
         cmd.insert(StyleSheet::new(sheet.clone()));
         cmd.insert(NodeBundle::default());
-        spawn_ui(entity, &mut cmd, root, state, asset_server.as_ref(), tree);
+        spawn_ui(
+            entity,
+            entity,
+            &mut commands,
+            root,
+            state,
+            asset_server.as_ref(),
+            tree,
+        );
     }
 }
 
 fn spawn_ui<T: UIState>(
     root: Entity,
-    e: &mut EntityCommands,
+    entity: Entity,
+    commands: &mut Commands,
     node: &UiNode,
     state: &T,
     asset_server: &AssetServer,
@@ -97,17 +108,26 @@ fn spawn_ui<T: UIState>(
             class,
             style: _,
         }) => {
-            setup_common_components(name, e, root, state, class);
-            e.insert(NodeBundle::default());
-            e.with_children(|p| {
-                for child in children.iter() {
+            setup_common_components(name, commands, entity, root, state, class);
+            commands.entity(entity).insert(NodeBundle::default());
+            let children = children
+                .iter()
+                .filter_map(|child| {
                     let Some(child) = tree.0.get(*child) else {
-                        continue;
-                    };
-                    let mut e = p.spawn_empty();
-                    let _ = spawn_ui(root, &mut e, child, state, asset_server, tree);
-                }
-            });
+                    return None;
+                };
+                    Some(spawn_ui(
+                        root,
+                        commands.spawn_empty().id(),
+                        commands,
+                        child,
+                        state,
+                        asset_server,
+                        tree,
+                    ))
+                })
+                .collect::<Vec<_>>();
+            commands.entity(entity).push_children(&children);
         }
         UiNode::Image(Image {
             name,
@@ -115,22 +135,26 @@ fn spawn_ui<T: UIState>(
             style: _,
             image_path,
         }) => {
-            setup_common_components(name, e, root, state, class);
+            setup_common_components(name, commands, entity, root, state, class);
 
-            if matches!(image_path, StringExpression::Expression(_)) {
-                e.insert(ReactiveComponentExpressionHandler::<
-                    UiImage,
-                    String,
-                    StringExpression,
-                >::new(root, &[("src", image_path)]));
-            }
+            let path = image_path.process(state);
 
-            let handle: Handle<bevy::prelude::Image> = asset_server.load(image_path.process(state));
-            e.insert(ImageBundle {
-                image: UiImage {
-                    texture: handle,
-                    ..Default::default()
-                },
+            let texture: Handle<bevy::prelude::Image> = asset_server.load(&path);
+
+            let image = UiImage {
+                texture,
+                ..Default::default()
+            };
+
+            image.setup_cached_expression_handlers(
+                &mut commands.entity(root),
+                entity,
+                image_path.clone(),
+                path,
+            );
+
+            commands.entity(entity).insert(ImageBundle {
+                image,
                 ..Default::default()
             });
         }
@@ -138,72 +162,60 @@ fn spawn_ui<T: UIState>(
             name,
             class,
             style: _,
-            text,
+            text: text_expression,
         }) => {
-            setup_common_components(name, e, root, state, class);
+            setup_common_components(name, commands, entity, root, state, class);
 
-            if matches!(text, StringExpression::Expression(_)) {
-                e.insert(ReactiveComponentExpressionHandler::<
-                    bevy::text::Text,
-                    String,
-                    StringExpression,
-                >::new(root, &[("text", text)]));
-            }
+            let value = text_expression.process(state);
+            let text = bevy::text::Text::from_section(value, TextStyle::default());
+            text.setup_expression_handlers(
+                &mut commands.entity(root),
+                entity,
+                text_expression.clone(),
+            );
 
-            e.insert(TextBundle::from_section(
-                text.process(state),
-                TextStyle::default(),
-            ));
+            commands.entity(entity).insert(TextBundle {
+                text,
+                ..Default::default()
+            });
         }
-        UiNode::RawText(text) => {
-            if matches!(text, StringExpression::Expression(_)) {
-                e.insert(ReactiveComponentExpressionHandler::<
-                    bevy::text::Text,
-                    String,
-                    StringExpression,
-                >::new(root, &[("text", text)]));
-            }
-            e.insert(TextBundle::from_section(
-                text.process(state),
-                TextStyle::default(),
-            ));
+        UiNode::RawText(text_expression) => {
+            let value = text_expression.process(state);
+            let text = bevy::text::Text::from_section(value, TextStyle::default());
+            text.setup_expression_handlers(
+                &mut commands.entity(root),
+                entity,
+                text_expression.clone(),
+            );
+
+            commands.entity(entity).insert(TextBundle {
+                text,
+                ..Default::default()
+            });
         }
         UiNode::Match(_) => {}
         UiNode::Empty => {}
     }
-    e.id()
+    entity
 }
 
 fn setup_common_components<T: UIState>(
     name: &Option<StringExpression>,
-    e: &mut EntityCommands,
+    commands: &mut Commands,
+    entity: Entity,
     root: Entity,
     state: &T,
     class: &Option<StringExpression>,
 ) {
     if let Some(name) = name {
-        if let StringExpression::Value(v) = name {
-            e.insert(Name::new(v.to_string()));
-        } else {
-            let reactive_handler = ReactiveComponentExpressionHandler::<
-                Name,
-                String,
-                StringExpression,
-            >::new(root, &[("name", name)]);
-            e.insert((reactive_handler, Name::new(name.process(state))));
-        }
+        let n = Name::new(name.process(state));
+        n.setup_expression_handlers(&mut commands.entity(root), entity, name.clone());
+        commands.entity(entity).insert(n);
     }
     if let Some(class) = class {
-        if let StringExpression::Value(v) = class {
-            e.insert(Class::new(v.to_string()));
-        } else {
-            let reactive_handler = ReactiveComponentExpressionHandler::<
-                Class,
-                String,
-                StringExpression,
-            >::new(root, &[("class", class)]);
-            e.insert((reactive_handler, Class::new(class.process(state))));
-        }
+        let c = Class::new(class.process(state));
+        c.setup_expression_handlers(&mut commands.entity(root), entity, class.clone());
+        commands.entity(entity).insert(c);
     }
 }
 

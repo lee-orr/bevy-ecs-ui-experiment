@@ -5,6 +5,10 @@
             "task": "Clippy & Fmt"
         },
         {
+            "label": "Test",
+            "task": "Test"
+        },
+        {
             "label": "Simple",
             "task": "Simple"
         },

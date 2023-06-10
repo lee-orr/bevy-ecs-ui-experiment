@@ -1,154 +1,74 @@
 use std::marker::PhantomData;
 
-use bevy::{prelude::*, text::Text, ui::UiImage, utils::HashMap};
+use bevy::{ecs::system::EntityCommands, prelude::*, text::Text, ui::UiImage};
 use bevy_ecss::Class;
 
 use crate::{string_expression::StringExpression, Expression, UIState};
 
-pub struct ReactiveExpressionHandler<V: PartialEq + Clone, E: Expression<V>> {
-    pub expression: E,
-    pub current: Option<V>,
-}
-
-impl<E: Expression<V>, V: PartialEq + Clone> From<&E> for ReactiveExpressionHandler<V, E> {
-    fn from(value: &E) -> Self {
-        Self {
-            expression: value.clone(),
-            current: None,
-        }
-    }
-}
-
-impl<V: PartialEq + Clone, E: Expression<V>> ReactiveExpressionHandler<V, E> {
-    pub fn conditional_update<T: UIState>(&mut self, state: &T) -> Option<V> {
-        let new_val = self.expression.process(state);
-        if let Some(current) = &self.current {
-            if &new_val != current {
-                self.current = Some(new_val.clone());
-                Some(new_val)
-            } else {
-                None
-            }
-        } else {
-            self.current = Some(new_val.clone());
-            Some(new_val)
-        }
-    }
-}
-
 #[derive(Component)]
-pub struct ReactiveComponentExpressionHandler<C: Component, V: PartialEq + Clone, E: Expression<V>>
-{
-    pub source_entity: Entity,
-    pub expressions: HashMap<String, ReactiveExpressionHandler<V, E>>,
-    phantom: PhantomData<C>,
+pub struct ReactiveExpressionHandler<
+    V: PartialEq + Clone,
+    E: Expression<V>,
+    C: Component,
+    const FIELD_ID: usize = 0,
+    CachedCurrent: PartialEq + Clone = (),
+> {
+    pub expression: E,
+    pub entity: Entity,
+    pub cached_current: CachedCurrent,
+    phantom: PhantomData<(C, V)>,
 }
 
-impl<C: Component, V: PartialEq + Clone, E: Expression<V>>
-    ReactiveComponentExpressionHandler<C, V, E>
+impl<
+        V: PartialEq + Clone,
+        E: Expression<V>,
+        C: Component,
+        const FIELD_ID: usize,
+        CachedCurrent: PartialEq + Clone,
+    > ReactiveExpressionHandler<V, E, C, FIELD_ID, CachedCurrent>
 {
-    pub fn new<S: ToString>(root: Entity, expressions: &[(S, &E)]) -> Self {
+    pub fn new(entity: Entity, expression: &E, cache: &CachedCurrent) -> Self {
         Self {
-            source_entity: root,
-            expressions: expressions
-                .iter()
-                .map(|(k, e)| (k.to_string(), ReactiveExpressionHandler::<V, E>::from(*e)))
-                .collect(),
-            phantom: Default::default(),
+            expression: expression.clone(),
+            entity,
+            cached_current: cache.clone(),
+            phantom: default(),
+        }
+    }
+
+    pub fn internal_conditional_update<T: UIState>(
+        &mut self,
+        state: &T,
+        current: impl PartialEq<V>,
+    ) -> Option<V> {
+        let new_val = self.expression.process(state);
+        if !current.eq(&new_val) {
+            info!("process found: new val");
+            Some(new_val)
+        } else {
+            info!("process found: old val");
+            None
         }
     }
 }
 
 pub trait ComponentExpressionHandler<C: Component, D> {
     fn get_source_entity(&self) -> Entity;
-    fn conditional_update<T: UIState>(&mut self, c: &C, state: &T, added_data: D) -> Option<C>;
+    fn conditional_update<T: UIState>(&mut self, c: &mut C, state: &T, added_data: D);
 }
 
-impl ComponentExpressionHandler<Name, ()>
-    for ReactiveComponentExpressionHandler<Name, String, StringExpression>
-{
-    fn conditional_update<T: UIState>(
-        &mut self,
-        _c: &Name,
-        state: &T,
-        _added_data: (),
-    ) -> Option<Name> {
-        let Some(handler) = self.expressions.get_mut("name") else { return None; };
-        handler.conditional_update(state).map(Name::new)
-    }
-
-    fn get_source_entity(&self) -> Entity {
-        self.source_entity
-    }
+pub trait GetExpressionHandlers<C: Component, Expressions> {
+    fn setup_expression_handlers(&self, root: &mut EntityCommands, target: Entity, e: Expressions);
 }
 
-impl ComponentExpressionHandler<Class, ()>
-    for ReactiveComponentExpressionHandler<Class, String, StringExpression>
-{
-    fn conditional_update<T: UIState>(
-        &mut self,
-        _c: &Class,
-        state: &T,
-        _added_data: (),
-    ) -> Option<Class> {
-        let Some(handler) = self.expressions.get_mut("class") else { return None; };
-        handler.conditional_update(state).map(Class::new)
-    }
-
-    fn get_source_entity(&self) -> Entity {
-        self.source_entity
-    }
-}
-
-impl ComponentExpressionHandler<Text, ()>
-    for ReactiveComponentExpressionHandler<Text, String, StringExpression>
-{
-    fn conditional_update<T: UIState>(
-        &mut self,
-        text: &Text,
-        state: &T,
-        _added_data: (),
-    ) -> Option<Text> {
-        let Some(handler) = self.expressions.get_mut("text") else { return None; };
-        handler.conditional_update(state).map(|v| {
-            Text::from_section(
-                v,
-                text.sections
-                    .get(0)
-                    .map(|v| v.style.clone())
-                    .unwrap_or_default(),
-            )
-        })
-    }
-
-    fn get_source_entity(&self) -> Entity {
-        self.source_entity
-    }
-}
-
-impl ComponentExpressionHandler<UiImage, &AssetServer>
-    for ReactiveComponentExpressionHandler<UiImage, String, StringExpression>
-{
-    fn conditional_update<T: UIState>(
-        &mut self,
-        img: &UiImage,
-        state: &T,
-        added_data: &AssetServer,
-    ) -> Option<UiImage> {
-        let Some(handler) = self.expressions.get_mut("src") else { return None; };
-        handler
-            .conditional_update(state)
-            .map(|v| added_data.load(v))
-            .map(|v| UiImage {
-                texture: v,
-                flip_x: img.flip_x,
-                flip_y: img.flip_y,
-            })
-    }
-
-    fn get_source_entity(&self) -> Entity {
-        self.source_entity
-    }
+pub trait GetCachedExpressionHandlers<C: Component, Expressions, CachedCurrent> {
+    fn setup_cached_expression_handlers(
+        &self,
+        root: &mut EntityCommands,
+        target: Entity,
+        e: Expressions,
+        cached: CachedCurrent,
+    );
 }
 
 fn component_expression_change_handler<
@@ -156,15 +76,34 @@ fn component_expression_change_handler<
     C: Component,
     H: ComponentExpressionHandler<C, ()> + Component,
 >(
-    commands: Commands,
-    roots: Query<&T, Changed<T>>,
-    components: Query<(Entity, &mut H, &C)>,
+    roots: Query<(&T, &Children), Changed<T>>,
+    reactive: Query<&mut H>,
+    components: Query<&mut C>,
 ) {
     component_expression_change_handler_with_added_data::<T, C, (), H>(
-        commands,
         roots,
+        reactive,
         components,
         (),
+    );
+}
+
+fn component_expression_change_handler_with_resource<
+    T: UIState,
+    C: Component,
+    R: Resource,
+    H: for<'a> ComponentExpressionHandler<C, &'a R> + Component,
+>(
+    roots: Query<(&T, &Children), Changed<T>>,
+    reactive: Query<&mut H>,
+    components: Query<&mut C>,
+    resource: Res<R>,
+) {
+    component_expression_change_handler_with_added_data::<T, C, &R, H>(
+        roots,
+        reactive,
+        components,
+        resource.as_ref(),
     );
 }
 
@@ -174,34 +113,18 @@ fn component_expression_change_handler_with_added_data<
     R: Copy,
     H: ComponentExpressionHandler<C, R> + Component,
 >(
-    mut commands: Commands,
-    roots: Query<&T, Changed<T>>,
-    mut components: Query<(Entity, &mut H, &C)>,
+    roots: Query<(&T, &Children), Changed<T>>,
+    mut reactive: Query<&mut H>,
+    mut components: Query<&mut C>,
     resource: R,
 ) {
-    for (entity, mut reactive, component) in components.iter_mut() {
-        let Ok(state) = roots.get(reactive.get_source_entity()) else { continue; };
-        let Some(c) = reactive.conditional_update(component, state, resource) else { continue; };
-        commands.entity(entity).insert(c);
+    for (state, children) in roots.iter() {
+        for child in children.iter() {
+            let Ok(mut reactive) = reactive.get_mut(*child) else { continue;};
+            let Ok(mut c) = components.get_mut(reactive.get_source_entity()) else { continue; };
+            reactive.conditional_update(&mut c, state, resource);
+        }
     }
-}
-
-fn image_url_change_handler<T: UIState>(
-    commands: Commands,
-    roots: Query<&T, Changed<T>>,
-    components: Query<(
-        Entity,
-        &mut ReactiveComponentExpressionHandler<UiImage, String, StringExpression>,
-        &UiImage,
-    )>,
-    resource: Res<AssetServer>,
-) {
-    component_expression_change_handler_with_added_data::<
-        T,
-        UiImage,
-        &AssetServer,
-        ReactiveComponentExpressionHandler<_, String, _>,
-    >(commands, roots, components, resource.as_ref());
 }
 
 pub struct ReactiveExpressionPlugin<T: UIState>(PhantomData<T>);
@@ -215,29 +138,191 @@ impl<T: UIState> Default for ReactiveExpressionPlugin<T> {
 impl<T: UIState> Plugin for ReactiveExpressionPlugin<T> {
     fn build(&self, app: &mut App) {
         app.add_system(
-            component_expression_change_handler::<
-                T,
-                Name,
-                ReactiveComponentExpressionHandler<_, String, StringExpression>,
-            >
+            component_expression_change_handler::<T, Name, NameExpressionHandler>
                 .in_base_set(CoreSet::PostUpdate),
         )
         .add_system(
-            component_expression_change_handler::<
-                T,
-                Class,
-                ReactiveComponentExpressionHandler<_, String, StringExpression>,
-            >
+            component_expression_change_handler::<T, Class, ClassExpressionHandler>
                 .in_base_set(CoreSet::PostUpdate),
         )
         .add_system(
-            component_expression_change_handler::<
-                T,
-                Text,
-                ReactiveComponentExpressionHandler<_, String, StringExpression>,
-            >
+            component_expression_change_handler::<T, Text, TextExpressionHandler>
                 .in_base_set(CoreSet::PostUpdate),
         )
-        .add_system(image_url_change_handler::<T>.in_base_set(CoreSet::PostUpdate));
+        .add_system(
+            component_expression_change_handler_with_resource::<
+                T,
+                UiImage,
+                AssetServer,
+                UiImageExpressionHandler,
+            >
+                .in_base_set(CoreSet::PostUpdate),
+        );
+    }
+}
+
+type NameExpressionHandler = ReactiveExpressionHandler<String, StringExpression, Name, 0>;
+
+impl GetExpressionHandlers<Name, StringExpression> for Name {
+    fn setup_expression_handlers(
+        &self,
+        root: &mut EntityCommands,
+        target: Entity,
+        e: StringExpression,
+    ) {
+        if !matches!(e, StringExpression::Value(_)) {
+            let reactive_handler = NameExpressionHandler::new(target, &e, &());
+            root.with_children(|p| {
+                p.spawn((
+                    reactive_handler,
+                    NodeBundle {
+                        visibility: Visibility::Hidden,
+                        ..Default::default()
+                    },
+                ));
+            });
+        }
+    }
+}
+
+impl ComponentExpressionHandler<Name, ()> for NameExpressionHandler {
+    fn get_source_entity(&self) -> Entity {
+        self.entity
+    }
+
+    fn conditional_update<T: UIState>(&mut self, c: &mut Name, state: &T, _added_data: ()) {
+        if let Some(nv) = self.internal_conditional_update(state, c.as_str()) {
+            c.set(nv);
+        }
+    }
+}
+
+type ClassExpressionHandler = ReactiveExpressionHandler<String, StringExpression, Class, 0>;
+
+impl GetExpressionHandlers<Class, StringExpression> for Class {
+    fn setup_expression_handlers(
+        &self,
+        root: &mut EntityCommands,
+        target: Entity,
+        e: StringExpression,
+    ) {
+        if !matches!(e, StringExpression::Value(_)) {
+            let reactive_handler = ClassExpressionHandler::new(target, &e, &());
+            root.with_children(|p| {
+                p.spawn((
+                    reactive_handler,
+                    NodeBundle {
+                        visibility: Visibility::Hidden,
+                        ..Default::default()
+                    },
+                ));
+            });
+        }
+    }
+}
+
+impl ComponentExpressionHandler<Class, ()> for ClassExpressionHandler {
+    fn get_source_entity(&self) -> Entity {
+        self.entity
+    }
+
+    fn conditional_update<T: UIState>(&mut self, c: &mut Class, state: &T, _added_data: ()) {
+        if let Some(nv) = self.internal_conditional_update(state, c.to_string()) {
+            *c = Class::new(nv);
+        }
+    }
+}
+
+type TextExpressionHandler = ReactiveExpressionHandler<String, StringExpression, Text, 0>;
+
+impl GetExpressionHandlers<Text, StringExpression> for Text {
+    fn setup_expression_handlers(
+        &self,
+        root: &mut EntityCommands,
+        target: Entity,
+        e: StringExpression,
+    ) {
+        if !matches!(e, StringExpression::Value(_)) {
+            let reactive_handler = TextExpressionHandler::new(target, &e, &());
+            root.with_children(|p| {
+                p.spawn((
+                    reactive_handler,
+                    NodeBundle {
+                        visibility: Visibility::Hidden,
+                        ..Default::default()
+                    },
+                ));
+            });
+        }
+    }
+}
+
+impl ComponentExpressionHandler<Text, ()> for TextExpressionHandler {
+    fn get_source_entity(&self) -> Entity {
+        self.entity
+    }
+
+    fn conditional_update<T: UIState>(&mut self, c: &mut Text, state: &T, _added_data: ()) {
+        let current = c
+            .sections
+            .iter()
+            .map(|c| c.value.clone())
+            .collect::<Vec<_>>()
+            .join("");
+        println!("Current Text: {current}");
+        if let Some(nv) = self.internal_conditional_update(state, current) {
+            println!("Processed Text: {nv}");
+            let style = c
+                .sections
+                .get(0)
+                .map(|sec| sec.style.clone())
+                .unwrap_or_default();
+            *c = Text::from_section(nv, style);
+        }
+    }
+}
+
+type UiImageExpressionHandler =
+    ReactiveExpressionHandler<String, StringExpression, UiImage, 0, String>;
+
+impl GetCachedExpressionHandlers<UiImage, StringExpression, String> for UiImage {
+    fn setup_cached_expression_handlers(
+        &self,
+        root: &mut EntityCommands,
+        target: Entity,
+        e: StringExpression,
+        cached: String,
+    ) {
+        if !matches!(e, StringExpression::Value(_)) {
+            let reactive_handler = UiImageExpressionHandler::new(target, &e, &cached);
+            root.with_children(|p| {
+                p.spawn((
+                    reactive_handler,
+                    NodeBundle {
+                        visibility: Visibility::Hidden,
+                        ..Default::default()
+                    },
+                ));
+            });
+        }
+    }
+}
+
+impl ComponentExpressionHandler<UiImage, &AssetServer> for UiImageExpressionHandler {
+    fn get_source_entity(&self) -> Entity {
+        self.entity
+    }
+
+    fn conditional_update<T: UIState>(
+        &mut self,
+        c: &mut UiImage,
+        state: &T,
+        added_data: &AssetServer,
+    ) {
+        let current = self.cached_current.clone();
+        if let Some(nv) = self.internal_conditional_update(state, current) {
+            self.cached_current = nv.clone();
+            c.texture = added_data.load(nv);
+        }
     }
 }
