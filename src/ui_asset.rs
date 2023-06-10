@@ -15,7 +15,7 @@ pub enum UiNode {
     Image(Image),
     Text(Text),
     RawText(StringExpression),
-    Conditional(Conditional<usize>),
+    Match(Match<usize>),
 }
 
 fn ui_node_intermediary_to_node_vec(vec: &mut Vec<UiNode>, node: UiNodeIntermediary) {
@@ -45,7 +45,39 @@ fn ui_node_intermediary_to_node_vec(vec: &mut Vec<UiNode>, node: UiNodeIntermedi
         UiNodeIntermediary::Image(img) => vec.push(UiNode::Image(img)),
         UiNodeIntermediary::Text(txt) => vec.push(UiNode::Text(txt)),
         UiNodeIntermediary::RawText(rtxt) => vec.push(UiNode::RawText(rtxt)),
-        UiNodeIntermediary::Conditional(_) => todo!(),
+        UiNodeIntermediary::Match(n) => {
+            let id = vec.len();
+            vec.push(UiNode::Empty);
+            let conditions = n
+                .conditions
+                .into_iter()
+                .map(
+                    |Condition {
+                         expression,
+                         children,
+                     }| {
+                        let children = children
+                            .into_iter()
+                            .map(|child| {
+                                let id = vec.len();
+                                ui_node_intermediary_to_node_vec(vec, child);
+                                id
+                            })
+                            .collect();
+                        Condition {
+                            expression,
+                            children,
+                        }
+                    },
+                )
+                .collect();
+            let node = Match {
+                condition: n.condition,
+                conditions,
+            };
+            let Some(n) = vec.get_mut(id) else { return; };
+            UiNode::Match(node).clone_into(n);
+        }
     }
 }
 
@@ -74,8 +106,8 @@ pub enum UiNodeIntermediary {
     Text(Text),
     #[serde(rename = "$text")]
     RawText(StringExpression),
-    #[serde(rename = "if")]
-    Conditional(Conditional<Box<UiNodeIntermediary>>),
+    #[serde(rename = "match")]
+    Match(Match<UiNodeIntermediary>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -115,14 +147,21 @@ pub struct Text {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Conditional<T> {
+pub struct Match<T> {
     #[serde(rename = "@condition")]
     pub condition: SimpleExpression,
-    #[serde(rename = "true")]
-    pub if_true: T,
-    #[serde(rename = "false")]
-    pub if_false: Option<T>,
+    #[serde(rename = "$value")]
+    pub conditions: Vec<Condition<T>>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Condition<T> {
+    #[serde(rename = "@value")]
+    expression: SimpleExpression,
+    #[serde(rename = "$value")]
+    children: Vec<T>,
+}
+
 #[cfg(test)]
 mod test {
     use crate::Expression;
@@ -229,6 +268,57 @@ mod test {
         let UiNode::Node(Node { name: _, class: _, style: _, children}) = parsed.0[0].clone() else { panic!("Not a node")};
         let UiNode::RawText(text) = parsed.0[*children.first().unwrap()].clone() else { panic!("Not a node") };
         assert_eq!(text.process(&NoContext), "some text");
+    }
+
+    #[test]
+    fn can_deserialize_a_conditional_node() {
+        let asset =
+            r#"<match condition="1 + 2 == 3"><value value="true"><node></node></value></match>"#;
+        let parsed: UiNodeTree = from_str(asset).unwrap();
+        let UiNode::Match(Match { condition, conditions}) = parsed.0[0].clone() else { panic!("Not a node")};
+
+        assert_eq!(conditions.len(), 1);
+
+        let condition: bool = condition.process(&NoContext);
+        assert!(condition);
+
+        let is_true = conditions.get(0).unwrap();
+        let value: bool = is_true.expression.process(&NoContext);
+        assert!(value);
+
+        assert_eq!(is_true.children.len(), 1);
+
+        let UiNode::Node(Node { children: _, name: _, class: _, style: _ }) = parsed.0[*is_true.children.first().unwrap()].clone() else { panic!("Not a node") };
+    }
+
+    #[test]
+    fn can_deserialize_a_conditional_node_with_false() {
+        let asset = r#"<match condition="1 + 2 == 3"><value value="true"><node></node></value><value value="false">test</value></match>"#;
+        let parsed: UiNodeTree = from_str(asset).unwrap();
+        let UiNode::Match(Match { condition, conditions}) = parsed.0[0].clone() else { panic!("Not a node")};
+
+        assert_eq!(conditions.len(), 2);
+
+        let condition: bool = condition.process(&NoContext);
+        assert!(condition);
+
+        let is_true = conditions.get(0).unwrap();
+        let value: bool = is_true.expression.process(&NoContext);
+        assert!(value);
+
+        assert_eq!(is_true.children.len(), 1);
+
+        let UiNode::Node(Node { children: _, name: _, class: _, style: _ }) = parsed.0[*is_true.children.first().unwrap()].clone() else { panic!("Not a node") };
+
+        let is_false = conditions.get(1).unwrap();
+        let value: bool = is_false.expression.process(&NoContext);
+        assert!(!value);
+
+        assert_eq!(is_false.children.len(), 1);
+
+        let UiNode::RawText(text) = parsed.0[*is_false.children.first().unwrap()].clone() else { panic!("Not a node") };
+
+        assert_eq!(text.process(&NoContext), "test");
     }
 
     #[test]

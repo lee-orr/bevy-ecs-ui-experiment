@@ -7,7 +7,7 @@ use crate::{
     expression::Expression,
     reactive_expression_handlers::{ReactiveComponentExpressionHandler, ReactiveExpressionPlugin},
     string_expression::StringExpression,
-    ui_asset::{Conditional, Image, Node, Text, UiNodeTree},
+    ui_asset::{Image, Node, Text, UiNodeTree},
     UiNode,
 };
 
@@ -168,11 +168,7 @@ fn spawn_ui<T: UIState>(
                 TextStyle::default(),
             ));
         }
-        UiNode::Conditional(Conditional {
-            condition: _,
-            if_true: _,
-            if_false: _,
-        }) => {}
+        UiNode::Match(_) => {}
         UiNode::Empty => {}
     }
     e.id()
