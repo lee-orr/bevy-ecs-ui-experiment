@@ -1,0 +1,16 @@
+{
+    "VsCodeTaskButtons.tasks": [
+        {
+            "label": "Clippy",
+            "task": "Clippy & Fmt"
+        },
+        {
+            "label": "Simple",
+            "task": "Simple"
+        },
+        {
+            "label": "Expressions",
+            "task": "Expressions"
+        }
+    ]
+}

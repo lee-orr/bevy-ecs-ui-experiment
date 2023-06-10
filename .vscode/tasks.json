@@ -11,6 +11,14 @@
 		},
 		{
 			"type": "shell",
+			"command": "cargo run --example simple_expressions",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"label": "Expressions"
+		},
+		{
+			"type": "shell",
 			"command": "cargo clippy --fix --allow-dirty && cargo fmt",
 			"label": "Clippy & Fmt"
 		}
