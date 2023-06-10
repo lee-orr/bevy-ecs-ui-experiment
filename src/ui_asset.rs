@@ -1,5 +1,5 @@
 use bevy::reflect::TypeUuid;
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{string_expression::StringExpression, SimpleExpression};
 
@@ -227,7 +227,7 @@ mod test {
         let asset = r#"<node>some text</node>"#;
         let parsed: UiNodeTree = from_str(asset).unwrap();
         let UiNode::Node(Node { name: _, class: _, style: _, children}) = parsed.0[0].clone() else { panic!("Not a node")};
-        let UiNode::RawText(text) = parsed.0[*children.get(0).unwrap()].clone() else { panic!("Not a node") };
+        let UiNode::RawText(text) = parsed.0[*children.first().unwrap()].clone() else { panic!("Not a node") };
         assert_eq!(text.process(&NoContext), "some text");
     }
 
@@ -246,11 +246,11 @@ mod test {
         let UiNode::Node(Node { name, class: _, style: _, children}) = &parsed.0[0].clone() else { panic!("Not a node")};
         assert_eq!(name.clone().unwrap().process(&NoContext), "test");
 
-        let UiNode::Node(Node { name: _, class, style: _, children}) = &parsed.0[*children.get(0).unwrap()] else { panic!("Not a node")};
+        let UiNode::Node(Node { name: _, class, style: _, children}) = &parsed.0[*children.first().unwrap()] else { panic!("Not a node")};
         assert_eq!(class.clone().unwrap().process(&NoContext), "class1 class2");
 
         {
-            let UiNode::Image(Image { name, class, style: _, image_path}) = &parsed.0[*children.get(0).unwrap()] else { panic!("Not a node")};
+            let UiNode::Image(Image { name, class, style: _, image_path}) = &parsed.0[*children.first().unwrap()] else { panic!("Not a node")};
             assert_eq!(image_path.process(&NoContext), "test-image.png");
             assert_eq!(class.clone().unwrap().process(&NoContext), "img_class");
             assert_eq!(name.clone().unwrap().process(&NoContext), "image");

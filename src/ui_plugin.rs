@@ -169,9 +169,9 @@ fn spawn_ui<T: UIState>(
             ));
         }
         UiNode::Conditional(Conditional {
-            condition,
-            if_true,
-            if_false,
+            condition: _,
+            if_true: _,
+            if_false: _,
         }) => {}
         UiNode::Empty => {}
     }
