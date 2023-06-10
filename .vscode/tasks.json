@@ -21,6 +21,11 @@
 			"type": "shell",
 			"command": "cargo clippy --fix --allow-dirty && cargo fmt",
 			"label": "Clippy & Fmt"
+		},
+		{
+			"type": "shell",
+			"command": "cargo test",
+			"label": "Test"
 		}
 	]
 }

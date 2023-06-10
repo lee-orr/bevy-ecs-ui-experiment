@@ -182,7 +182,6 @@ fn component_expression_change_handler_with_added_data<
     for (entity, mut reactive, component) in components.iter_mut() {
         let Ok(state) = roots.get(reactive.get_source_entity()) else { continue; };
         let Some(c) = reactive.conditional_update(component, state, resource) else { continue; };
-        info!("Updating");
         commands.entity(entity).insert(c);
     }
 }
