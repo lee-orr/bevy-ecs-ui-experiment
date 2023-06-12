@@ -9,7 +9,7 @@ use crate::{
         GetCachedExpressionHandlers, GetExpressionHandlers, ReactiveExpressionPlugin,
     },
     string_expression::StringExpression,
-    ui_asset::{Image, Node, Text, UiNodeTree},
+    ui_asset::{IfElse, Image, Node, Text, UiNodeTree},
     UiNode,
 };
 
@@ -193,7 +193,7 @@ fn spawn_ui<T: UIState>(
                 ..Default::default()
             });
         }
-        UiNode::Match(_) => {}
+        UiNode::IfElse(_) => {}
         UiNode::Empty => {}
     }
     entity

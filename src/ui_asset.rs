@@ -15,68 +15,83 @@ pub enum UiNode {
     Image(Image),
     Text(Text),
     RawText(StringExpression),
-    Match(Match<usize>),
+    IfElse(IfElse),
 }
 
-fn ui_node_intermediary_to_node_vec(vec: &mut Vec<UiNode>, node: UiNodeIntermediary) {
+fn ui_node_intermediary_to_node_vec(
+    vec: &mut Vec<UiNode>,
+    node: &UiNodeIntermediary,
+    previous_sibling: &Option<usize>,
+) -> Option<usize> {
     match node {
-        UiNodeIntermediary::Empty => vec.push(UiNode::Empty),
+        UiNodeIntermediary::Empty => None,
         UiNodeIntermediary::Node(n) => {
             let id = vec.len();
             vec.push(UiNode::Empty);
-            let children = n
-                .children
-                .into_iter()
-                .map(|child| {
-                    let id = vec.len();
-                    ui_node_intermediary_to_node_vec(vec, child);
-                    id
-                })
-                .collect();
+            let (_, children) = n.children.iter().fold(
+                (None, Vec::with_capacity(n.children.len())),
+                |(previous_child, mut children), child| {
+                    let id = ui_node_intermediary_to_node_vec(vec, child, &previous_child);
+                    let next_id = if let Some(id) = id {
+                        children.push(id);
+                        Some(id)
+                    } else {
+                        previous_child
+                    };
+                    (next_id, children)
+                },
+            );
             let node = Node {
                 children,
-                name: n.name,
-                class: n.class,
-                style: n.style,
+                name: n.name.clone(),
+                class: n.class.clone(),
+                style: n.style.clone(),
             };
-            let Some(n) = vec.get_mut(id) else { return; };
+            let Some(n) = vec.get_mut(id) else { return None; };
             UiNode::Node(node).clone_into(n);
+            Some(id)
         }
-        UiNodeIntermediary::Image(img) => vec.push(UiNode::Image(img)),
-        UiNodeIntermediary::Text(txt) => vec.push(UiNode::Text(txt)),
-        UiNodeIntermediary::RawText(rtxt) => vec.push(UiNode::RawText(rtxt)),
-        UiNodeIntermediary::Match(n) => {
+        UiNodeIntermediary::Image(img) => {
             let id = vec.len();
-            vec.push(UiNode::Empty);
-            let conditions = n
-                .conditions
-                .into_iter()
-                .map(
-                    |Condition {
-                         expression,
-                         children,
-                     }| {
-                        let children = children
-                            .into_iter()
-                            .map(|child| {
-                                let id = vec.len();
-                                ui_node_intermediary_to_node_vec(vec, child);
-                                id
-                            })
-                            .collect();
-                        Condition {
-                            expression,
-                            children,
-                        }
-                    },
-                )
-                .collect();
-            let node = Match {
-                condition: n.condition,
-                conditions,
+            vec.push(UiNode::Image(img.clone()));
+            Some(id)
+        }
+        UiNodeIntermediary::Text(txt) => {
+            let id = vec.len();
+            vec.push(UiNode::Text(txt.clone()));
+            Some(id)
+        }
+        UiNodeIntermediary::RawText(rtxt) => {
+            let id = vec.len();
+            vec.push(UiNode::RawText(rtxt.clone()));
+            Some(id)
+        }
+        UiNodeIntermediary::If(IfElseTag { condition, child }) => {
+            let if_id = vec.len();
+            let Some(condition) = condition else { return None; };
+            let id = if_id + 1;
+
+            vec.push(UiNode::IfElse(IfElse {
+                conditions: vec![(Some(condition.clone()), id)],
+            }));
+            ui_node_intermediary_to_node_vec(vec, child.as_ref(), &None);
+            Some(if_id)
+        }
+        UiNodeIntermediary::Else(IfElseTag { condition, child }) => {
+            println!("Parsing Else");
+            let Some(previous_id) = previous_sibling else {return None;};
+            println!("No Previous");
+            let id = vec.len();
+            let Some(previous) = vec.get_mut(*previous_id) else {
+                return None;
             };
-            let Some(n) = vec.get_mut(id) else { return; };
-            UiNode::Match(node).clone_into(n);
+            let UiNode::IfElse(ref mut ifelse) = previous else {
+                return None;
+            };
+            println!("Got If Else");
+            ifelse.conditions.push((condition.clone(), id));
+            ui_node_intermediary_to_node_vec(vec, child.as_ref(), &None);
+            previous_sibling.clone()
         }
     }
 }
@@ -88,7 +103,7 @@ impl<'de> Deserialize<'de> for UiNodeTree {
     {
         let intermediary = UiNodeIntermediary::deserialize(deserializer)?;
         let mut vec = vec![];
-        ui_node_intermediary_to_node_vec(&mut vec, intermediary);
+        ui_node_intermediary_to_node_vec(&mut vec, &intermediary, &None);
         Ok(UiNodeTree(vec))
     }
 }
@@ -106,8 +121,10 @@ pub enum UiNodeIntermediary {
     Text(Text),
     #[serde(rename = "$text")]
     RawText(StringExpression),
-    #[serde(rename = "match")]
-    Match(Match<UiNodeIntermediary>),
+    #[serde(rename = "if")]
+    If(IfElseTag),
+    #[serde(rename = "else")]
+    Else(IfElseTag),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -146,20 +163,17 @@ pub struct Text {
     pub text: StringExpression,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Match<T> {
-    #[serde(rename = "@condition")]
-    pub condition: SimpleExpression,
-    #[serde(rename = "$value")]
-    pub conditions: Vec<Condition<T>>,
+#[derive(Debug, Clone)]
+pub struct IfElse {
+    pub conditions: Vec<(Option<SimpleExpression>, usize)>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Condition<T> {
-    #[serde(rename = "@value")]
-    expression: SimpleExpression,
+pub struct IfElseTag {
+    #[serde(rename = "@condition")]
+    pub condition: Option<SimpleExpression>,
     #[serde(rename = "$value")]
-    children: Vec<T>,
+    pub child: Box<UiNodeIntermediary>,
 }
 
 #[cfg(test)]
@@ -272,51 +286,67 @@ mod test {
 
     #[test]
     fn can_deserialize_a_conditional_node() {
-        let asset =
-            r#"<match condition="1 + 2 == 3"><value value="true"><node></node></value></match>"#;
+        let asset = r#"<if condition="1 + 2 == 3" ><node></node></if>"#;
         let parsed: UiNodeTree = from_str(asset).unwrap();
-        let UiNode::Match(Match { condition, conditions}) = parsed.0[0].clone() else { panic!("Not a node")};
+        let UiNode::IfElse(IfElse { conditions }) = parsed.0[0].clone() else { panic!("Not a node")};
 
         assert_eq!(conditions.len(), 1);
 
+        let (Some(condition), child) = &conditions[0] else { panic!("No Condition")};
+
         let condition: bool = condition.process(&NoContext);
         assert!(condition);
 
-        let is_true = conditions.get(0).unwrap();
-        let value: bool = is_true.expression.process(&NoContext);
-        assert!(value);
-
-        assert_eq!(is_true.children.len(), 1);
-
-        let UiNode::Node(Node { children: _, name: _, class: _, style: _ }) = parsed.0[*is_true.children.first().unwrap()].clone() else { panic!("Not a node") };
+        let UiNode::Node(Node { children: _, name: _, class: _, style: _ }) = parsed.0[*child].clone() else { panic!("Not a node") };
     }
 
     #[test]
-    fn can_deserialize_a_conditional_node_with_false() {
-        let asset = r#"<match condition="1 + 2 == 3"><value value="true"><node></node></value><value value="false">test</value></match>"#;
+    fn can_deserialize_a_conditional_node_with_else() {
+        let asset =
+            r#"<node><if condition="1 + 2 == 3"><node></node></if><else>test</else></node>"#;
         let parsed: UiNodeTree = from_str(asset).unwrap();
-        let UiNode::Match(Match { condition, conditions}) = parsed.0[0].clone() else { panic!("Not a node")};
+        let UiNode::IfElse(IfElse { conditions }) = parsed.0[1].clone() else { panic!("Not a node")};
 
         assert_eq!(conditions.len(), 2);
 
+        let (Some(condition), child) = &conditions[0] else { panic!("No Condition")};
+
         let condition: bool = condition.process(&NoContext);
         assert!(condition);
+        let UiNode::Node(Node { children: _, name: _, class: _, style: _ }) = parsed.0[*child].clone() else { panic!("Not a node") };
 
-        let is_true = conditions.get(0).unwrap();
-        let value: bool = is_true.expression.process(&NoContext);
-        assert!(value);
+        let (None, child) = &conditions[1] else { panic!("False Condition Shouldn't Exist")};
 
-        assert_eq!(is_true.children.len(), 1);
+        let UiNode::RawText(text) = parsed.0[*child].clone() else { panic!("Not a node") };
 
-        let UiNode::Node(Node { children: _, name: _, class: _, style: _ }) = parsed.0[*is_true.children.first().unwrap()].clone() else { panic!("Not a node") };
+        assert_eq!(text.process(&NoContext), "test");
+    }
 
-        let is_false = conditions.get(1).unwrap();
-        let value: bool = is_false.expression.process(&NoContext);
-        assert!(!value);
+    #[test]
+    fn can_deserialize_a_conditional_node_with_else_if() {
+        let asset = r#"<node><if condition="1 + 2 == 3"><node></node></if><else condition="1 + 2 == 4">run</else><else>test</else></node>"#;
+        let parsed: UiNodeTree = from_str(asset).unwrap();
+        let UiNode::IfElse(IfElse { conditions }) = parsed.0[1].clone() else { panic!("Not a node")};
 
-        assert_eq!(is_false.children.len(), 1);
+        assert_eq!(conditions.len(), 3);
 
-        let UiNode::RawText(text) = parsed.0[*is_false.children.first().unwrap()].clone() else { panic!("Not a node") };
+        let (Some(condition), child) = &conditions[0] else { panic!("No Condition")};
+
+        let condition: bool = condition.process(&NoContext);
+        assert!(condition);
+        let UiNode::Node(Node { children: _, name: _, class: _, style: _ }) = parsed.0[*child].clone() else { panic!("Not a node") };
+
+        let (Some(condition), child) = &conditions[1] else { panic!("No Condition")};
+
+        let condition: bool = condition.process(&NoContext);
+        assert!(!condition);
+        let UiNode::RawText(text) = parsed.0[*child].clone() else { panic!("Not a node") };
+
+        assert_eq!(text.process(&NoContext), "run");
+
+        let (None, child) = &conditions[2] else { panic!("False Condition Shouldn't Exist")};
+
+        let UiNode::RawText(text) = parsed.0[*child].clone() else { panic!("Not a node") };
 
         assert_eq!(text.process(&NoContext), "test");
     }

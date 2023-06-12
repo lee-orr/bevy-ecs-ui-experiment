@@ -1,4 +1,5 @@
 pub mod expression;
+pub mod logical_nodes;
 pub mod reactive_expression_handlers;
 pub mod string_expression;
 pub mod ui_asset;
@@ -22,3 +23,5 @@ impl Plugin for EcsUiPlugin {
             .add_plugin(XmlAssetPlugin::<UiNodeTree>::new(&["buml"]));
     }
 }
+
+pub type ExpressionValue = evalexpr::Value;
