@@ -82,9 +82,7 @@ fn display_ui<T: UIState>(
         cmd.insert(StyleSheet::new(sheet.clone()));
         cmd.insert(NodeBundle::default());
         spawn_ui(
-            entity,
-            entity,
-            None,
+            (entity, entity, None),
             &mut commands,
             root,
             state,
@@ -96,9 +94,7 @@ fn display_ui<T: UIState>(
 }
 
 pub fn spawn_ui<T: UIState>(
-    root: Entity,
-    entity: Entity,
-    parent: Option<Entity>,
+    (root, entity, parent): (Entity, Entity, Option<Entity>),
     commands: &mut Commands,
     node: &UiNode,
     state: &T,
@@ -122,9 +118,7 @@ pub fn spawn_ui<T: UIState>(
                     return None;
                 };
                     Some(spawn_ui(
-                        root,
-                        commands.spawn_empty().id(),
-                        Some(entity),
+                        (root, commands.spawn_empty().id(), Some(entity)),
                         commands,
                         child,
                         state,
@@ -227,9 +221,7 @@ pub fn spawn_ui<T: UIState>(
             let ui_child = match child {
                 Some(child) => tree.0.get(child).map(|node| {
                     spawn_ui(
-                        id,
-                        entity,
-                        parent,
+                        (id, entity, parent),
                         commands,
                         node,
                         state,
@@ -242,9 +234,7 @@ pub fn spawn_ui<T: UIState>(
             };
 
             let ui_child = ui_child.unwrap_or(spawn_ui(
-                id,
-                entity,
-                parent,
+                (id, entity, parent),
                 commands,
                 &UiNode::Empty,
                 state,

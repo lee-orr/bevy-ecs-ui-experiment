@@ -137,9 +137,7 @@ pub fn ui_if_else_changed<T: UIState>(
             Some(child) => {
                 if let Some(node) = tree.0.get(child) {
                     Some(spawn_ui(
-                        entity,
-                        new_ui_child,
-                        Some(if_else.ui_parent),
+                        (entity, new_ui_child, Some(if_else.ui_parent)),
                         &mut commands,
                         node,
                         state,
@@ -155,9 +153,7 @@ pub fn ui_if_else_changed<T: UIState>(
         };
 
         let _ = ui_child.unwrap_or(spawn_ui(
-            entity,
-            new_ui_child,
-            Some(if_else.ui_parent),
+            (entity, new_ui_child, Some(if_else.ui_parent)),
             &mut commands,
             &UiNode::Empty,
             state,
