@@ -91,7 +91,7 @@ fn ui_node_intermediary_to_node_vec(
             println!("Got If Else");
             ifelse.conditions.push((condition.clone(), id));
             ui_node_intermediary_to_node_vec(vec, child.as_ref(), &None);
-            previous_sibling.clone()
+            *previous_sibling
         }
     }
 }
@@ -326,6 +326,9 @@ mod test {
     fn can_deserialize_a_conditional_node_with_else_if() {
         let asset = r#"<node><if condition="1 + 2 == 3"><node></node></if><else condition="1 + 2 == 4">run</else><else>test</else></node>"#;
         let parsed: UiNodeTree = from_str(asset).unwrap();
+
+        assert_eq!(parsed.0.len(), 5);
+
         let UiNode::IfElse(IfElse { conditions }) = parsed.0[1].clone() else { panic!("Not a node")};
 
         assert_eq!(conditions.len(), 3);

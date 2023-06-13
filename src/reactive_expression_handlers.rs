@@ -3,7 +3,12 @@ use std::marker::PhantomData;
 use bevy::{ecs::system::EntityCommands, prelude::*, text::Text, ui::UiImage};
 use bevy_ecss::Class;
 
-use crate::{string_expression::StringExpression, Expression, UIState};
+use crate::{
+    logical_nodes::LogicalNodesPlugin, string_expression::StringExpression, Expression, UIState,
+};
+
+#[derive(Component)]
+pub struct ReactiveParent<T: UIState>(PhantomData<T>);
 
 #[derive(Component)]
 pub struct ReactiveExpressionHandler<
@@ -71,59 +76,92 @@ pub trait GetCachedExpressionHandlers<C: Component, Expressions, CachedCurrent> 
     );
 }
 
-fn component_expression_change_handler<
+pub fn component_expression_change_handler<
     T: UIState,
     C: Component,
     H: ComponentExpressionHandler<C, ()> + Component,
 >(
     roots: Query<(&T, &Children), Changed<T>>,
+    parents: Query<&Children, With<ReactiveParent<T>>>,
     reactive: Query<&mut H>,
     components: Query<&mut C>,
 ) {
     component_expression_change_handler_with_added_data::<T, C, (), H>(
         roots,
+        parents,
         reactive,
         components,
         (),
     );
 }
 
-fn component_expression_change_handler_with_resource<
+pub fn component_expression_change_handler_with_resource<
     T: UIState,
     C: Component,
     R: Resource,
     H: for<'a> ComponentExpressionHandler<C, &'a R> + Component,
 >(
     roots: Query<(&T, &Children), Changed<T>>,
+    parents: Query<&Children, With<ReactiveParent<T>>>,
     reactive: Query<&mut H>,
     components: Query<&mut C>,
     resource: Res<R>,
 ) {
     component_expression_change_handler_with_added_data::<T, C, &R, H>(
         roots,
+        parents,
         reactive,
         components,
         resource.as_ref(),
     );
 }
 
-fn component_expression_change_handler_with_added_data<
+pub fn component_expression_change_handler_with_added_data<
     T: UIState,
     C: Component,
     R: Copy,
     H: ComponentExpressionHandler<C, R> + Component,
 >(
     roots: Query<(&T, &Children), Changed<T>>,
+    parents: Query<&Children, With<ReactiveParent<T>>>,
     mut reactive: Query<&mut H>,
     mut components: Query<&mut C>,
     resource: R,
 ) {
     for (state, children) in roots.iter() {
-        for child in children.iter() {
-            let Ok(mut reactive) = reactive.get_mut(*child) else { continue;};
-            let Ok(mut c) = components.get_mut(reactive.get_source_entity()) else { continue; };
-            reactive.conditional_update(&mut c, state, resource);
-        }
+        component_expression_change_individual_nahdler(
+            children,
+            state,
+            &parents,
+            &mut reactive,
+            &mut components,
+            resource,
+        );
+    }
+}
+
+fn component_expression_change_individual_nahdler<
+    T: UIState,
+    R: Copy,
+    C: Component,
+    H: ComponentExpressionHandler<C, R> + Component,
+>(
+    children: &Children,
+    state: &T,
+    parents: &Query<&Children, With<ReactiveParent<T>>>,
+    reactives: &mut Query<&mut H>,
+    components: &mut Query<&mut C>,
+    resource: R,
+) {
+    for child in children.iter() {
+        let Ok(mut reactive) = reactives.get_mut(*child) else { continue;};
+        let Ok(mut c) = components.get_mut(reactive.get_source_entity()) else { continue; };
+        reactive.conditional_update(&mut c, state, resource);
+
+        let Ok(children) = parents.get(*child) else { continue; };
+        component_expression_change_individual_nahdler(
+            children, state, parents, reactives, components, resource,
+        );
     }
 }
 
@@ -137,27 +175,28 @@ impl<T: UIState> Default for ReactiveExpressionPlugin<T> {
 
 impl<T: UIState> Plugin for ReactiveExpressionPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.add_system(
-            component_expression_change_handler::<T, Name, NameExpressionHandler>
-                .in_base_set(CoreSet::PostUpdate),
-        )
-        .add_system(
-            component_expression_change_handler::<T, Class, ClassExpressionHandler>
-                .in_base_set(CoreSet::PostUpdate),
-        )
-        .add_system(
-            component_expression_change_handler::<T, Text, TextExpressionHandler>
-                .in_base_set(CoreSet::PostUpdate),
-        )
-        .add_system(
-            component_expression_change_handler_with_resource::<
-                T,
-                UiImage,
-                AssetServer,
-                UiImageExpressionHandler,
-            >
-                .in_base_set(CoreSet::PostUpdate),
-        );
+        app.add_plugin(LogicalNodesPlugin::<T>::default())
+            .add_system(
+                component_expression_change_handler::<T, Name, NameExpressionHandler>
+                    .in_base_set(CoreSet::PostUpdate),
+            )
+            .add_system(
+                component_expression_change_handler::<T, Class, ClassExpressionHandler>
+                    .in_base_set(CoreSet::PostUpdate),
+            )
+            .add_system(
+                component_expression_change_handler::<T, Text, TextExpressionHandler>
+                    .in_base_set(CoreSet::PostUpdate),
+            )
+            .add_system(
+                component_expression_change_handler_with_resource::<
+                    T,
+                    UiImage,
+                    AssetServer,
+                    UiImageExpressionHandler,
+                >
+                    .in_base_set(CoreSet::PostUpdate),
+            );
     }
 }
 

@@ -19,6 +19,14 @@
 		},
 		{
 			"type": "shell",
+			"command": "cargo run --example if_expressions",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"label": "If"
+		},
+		{
+			"type": "shell",
 			"command": "cargo clippy --fix --allow-dirty && cargo fmt",
 			"label": "Clippy & Fmt"
 		},

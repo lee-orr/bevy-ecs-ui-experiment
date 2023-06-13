@@ -1,4 +1,4 @@
-use bevy::reflect::GetPath;
+use bevy::{prelude::info, reflect::GetPath};
 
 use serde::{de, Deserialize, Deserializer, Serialize};
 
@@ -6,12 +6,29 @@ use crate::UIState;
 
 use std::str::FromStr;
 
-pub trait Expression<Val>: FromStr + Send + Sync + Clone {
+pub trait Expression<Val>: Send + Sync + Clone {
     fn process<T: UIState>(&self, context: &T) -> Val;
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct SimpleExpression(String);
+
+#[derive(Debug, Clone)]
+pub struct ArrayExpression(pub Vec<SimpleExpression>);
+
+impl Expression<Option<usize>> for ArrayExpression {
+    fn process<T: UIState>(&self, context: &T) -> Option<usize> {
+        info!("Processing Array Expression {self:?}");
+        for (id, exp) in self.0.iter().enumerate() {
+            if exp.process(context) {
+                info!("Got true at {id} - {exp:?}");
+                return Some(id);
+            }
+        }
+        info!("Got false");
+        None
+    }
+}
 
 impl FromStr for SimpleExpression {
     type Err = String;

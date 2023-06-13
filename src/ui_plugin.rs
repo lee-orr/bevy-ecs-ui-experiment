@@ -5,12 +5,13 @@ use bevy_ecss::{Class, StyleSheet, StyleSheetAsset};
 
 use crate::{
     expression::Expression,
+    logical_nodes::UiIfElse,
     reactive_expression_handlers::{
         GetCachedExpressionHandlers, GetExpressionHandlers, ReactiveExpressionPlugin,
     },
     string_expression::StringExpression,
     ui_asset::{IfElse, Image, Node, Text, UiNodeTree},
-    UiNode,
+    ArrayExpression, UiNode,
 };
 
 pub struct UiPlugin<T: UIState>(PhantomData<T>, Option<(String, String)>);
@@ -83,23 +84,27 @@ fn display_ui<T: UIState>(
         spawn_ui(
             entity,
             entity,
+            None,
             &mut commands,
             root,
             state,
             asset_server.as_ref(),
             tree,
+            entity,
         );
     }
 }
 
-fn spawn_ui<T: UIState>(
+pub fn spawn_ui<T: UIState>(
     root: Entity,
     entity: Entity,
+    parent: Option<Entity>,
     commands: &mut Commands,
     node: &UiNode,
     state: &T,
     asset_server: &AssetServer,
     tree: &UiNodeTree,
+    data_root: Entity,
 ) -> Entity {
     match node {
         UiNode::Node(Node {
@@ -119,11 +124,13 @@ fn spawn_ui<T: UIState>(
                     Some(spawn_ui(
                         root,
                         commands.spawn_empty().id(),
+                        Some(entity),
                         commands,
                         child,
                         state,
                         asset_server,
                         tree,
+                        data_root,
                     ))
                 })
                 .collect::<Vec<_>>();
@@ -193,8 +200,84 @@ fn spawn_ui<T: UIState>(
                 ..Default::default()
             });
         }
-        UiNode::IfElse(_) => {}
-        UiNode::Empty => {}
+        UiNode::IfElse(IfElse { conditions }) => {
+            let mut id = Entity::PLACEHOLDER;
+
+            commands.entity(root).with_children(|p| {
+                id = p.spawn_empty().id(); //((NodeBundle::default(), ui_if_else)).id();
+            });
+
+            let condition_expression = ArrayExpression(
+                conditions
+                    .iter()
+                    .filter_map(|(expression, _)| expression.clone())
+                    .collect(),
+            );
+
+            let child_options: Vec<usize> = conditions.iter().map(|(_, id)| *id).collect();
+
+            let current_condition = condition_expression.process(state);
+            let num_conditions = conditions.len();
+
+            let child = match current_condition {
+                Some(id) => child_options.get(id).cloned(),
+                None => child_options.get(num_conditions).cloned(),
+            };
+
+            let ui_child = match child {
+                Some(child) => tree.0.get(child).map(|node| {
+                    spawn_ui(
+                        id,
+                        entity,
+                        parent,
+                        commands,
+                        node,
+                        state,
+                        asset_server,
+                        tree,
+                        data_root,
+                    )
+                }),
+                _ => None,
+            };
+
+            let ui_child = ui_child.unwrap_or(spawn_ui(
+                id,
+                entity,
+                parent,
+                commands,
+                &UiNode::Empty,
+                state,
+                asset_server,
+                tree,
+                data_root,
+            ));
+
+            let ui_if_else = UiIfElse {
+                current_condition,
+                num_conditions,
+                child_options,
+                data_root,
+                ui_parent: parent.unwrap_or(root),
+                ui_child: (current_condition, ui_child),
+            };
+
+            ui_if_else.setup_expression_handlers(
+                &mut commands.entity(root),
+                id,
+                condition_expression,
+            );
+
+            commands
+                .entity(id)
+                .insert((ui_if_else, NodeBundle::default()));
+        }
+        UiNode::Empty => {
+            commands.entity(entity).insert(NodeBundle {
+                visibility: Visibility::Hidden,
+                ..Default::default()
+            });
+        }
     }
     entity
 }

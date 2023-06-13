@@ -7,6 +7,12 @@
     align-items: center;
 }
 
+text {
+    color: green;
+    font: "libre-baskerville/LibreBaskerville-Regular.ttf";
+    font-size: 15;
+}
+
 .img_class {
     width: 300px;
     height: 300px;
