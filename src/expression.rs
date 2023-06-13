@@ -1,4 +1,7 @@
-use bevy::{prelude::info, reflect::GetPath};
+use bevy::{
+    prelude::info,
+    reflect::{FromReflect, GetPath, Reflect},
+};
 
 use serde::{de, Deserialize, Deserializer, Serialize};
 
@@ -10,10 +13,10 @@ pub trait Expression<Val>: Send + Sync + Clone {
     fn process<T: UIState>(&self, context: &T) -> Val;
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Reflect, FromReflect)]
 pub struct SimpleExpression(String);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Reflect, FromReflect)]
 pub struct ArrayExpression(pub Vec<SimpleExpression>);
 
 impl Expression<Option<usize>> for ArrayExpression {

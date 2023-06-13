@@ -102,6 +102,7 @@ pub fn spawn_ui<T: UIState>(
     tree: &UiNodeTree,
     data_root: Entity,
 ) -> Entity {
+    let tag_name = node.tag();
     match node {
         UiNode::Node(Node {
             children,
@@ -109,7 +110,7 @@ pub fn spawn_ui<T: UIState>(
             class,
             style: _,
         }) => {
-            setup_common_components(name, commands, entity, root, state, class);
+            setup_common_components(name, commands, entity, root, state, class, tag_name);
             commands.entity(entity).insert(NodeBundle::default());
             let children = children
                 .iter()
@@ -136,7 +137,7 @@ pub fn spawn_ui<T: UIState>(
             style: _,
             image_path,
         }) => {
-            setup_common_components(name, commands, entity, root, state, class);
+            setup_common_components(name, commands, entity, root, state, class, tag_name);
 
             let path = image_path.process(state);
 
@@ -165,7 +166,7 @@ pub fn spawn_ui<T: UIState>(
             style: _,
             text: text_expression,
         }) => {
-            setup_common_components(name, commands, entity, root, state, class);
+            setup_common_components(name, commands, entity, root, state, class, tag_name);
 
             let value = text_expression.process(state);
             let text = bevy::text::Text::from_section(value, TextStyle::default());
@@ -198,7 +199,7 @@ pub fn spawn_ui<T: UIState>(
             let mut id = Entity::PLACEHOLDER;
 
             commands.entity(root).with_children(|p| {
-                id = p.spawn_empty().id(); //((NodeBundle::default(), ui_if_else)).id();
+                id = p.spawn_empty().id();
             });
 
             let condition_expression = ArrayExpression(
@@ -260,13 +261,16 @@ pub fn spawn_ui<T: UIState>(
 
             commands
                 .entity(id)
-                .insert((ui_if_else, NodeBundle::default()));
+                .insert((ui_if_else, NodeBundle::default(), tag_name));
         }
         UiNode::Empty => {
-            commands.entity(entity).insert(NodeBundle {
-                visibility: Visibility::Hidden,
-                ..Default::default()
-            });
+            commands.entity(entity).insert((
+                NodeBundle {
+                    visibility: Visibility::Hidden,
+                    ..Default::default()
+                },
+                tag_name,
+            ));
         }
     }
     entity
@@ -279,11 +283,14 @@ fn setup_common_components<T: UIState>(
     root: Entity,
     state: &T,
     class: &Option<StringExpression>,
+    tag_name: Name,
 ) {
     if let Some(name) = name {
         let n = Name::new(name.process(state));
         n.setup_expression_handlers(&mut commands.entity(root), entity, name.clone());
         commands.entity(entity).insert(n);
+    } else {
+        commands.entity(entity).insert(tag_name);
     }
     if let Some(class) = class {
         let c = Class::new(class.process(state));

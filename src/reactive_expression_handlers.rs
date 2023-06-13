@@ -218,6 +218,7 @@ impl GetExpressionHandlers<Name, StringExpression> for Name {
                         visibility: Visibility::Hidden,
                         ..Default::default()
                     },
+                    Name::new(format!("Name Expression: {e:?}")),
                 ));
             });
         }
@@ -254,6 +255,7 @@ impl GetExpressionHandlers<Class, StringExpression> for Class {
                         visibility: Visibility::Hidden,
                         ..Default::default()
                     },
+                    Name::new(format!("Class Expression: {e:?}")),
                 ));
             });
         }
@@ -290,6 +292,7 @@ impl GetExpressionHandlers<Text, StringExpression> for Text {
                         visibility: Visibility::Hidden,
                         ..Default::default()
                     },
+                    Name::new(format!("Text Expression: {e:?}")),
                 ));
             });
         }
@@ -341,6 +344,7 @@ impl GetCachedExpressionHandlers<UiImage, StringExpression, String> for UiImage 
                         visibility: Visibility::Hidden,
                         ..Default::default()
                     },
+                    Name::new(format!("Image Source Expression: {e:?}")),
                 ));
             });
         }

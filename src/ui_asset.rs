@@ -1,13 +1,16 @@
-use bevy::reflect::TypeUuid;
+use bevy::{
+    prelude::Name,
+    reflect::{FromReflect, Reflect, TypeUuid},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{string_expression::StringExpression, SimpleExpression};
 
-#[derive(Debug, Clone, TypeUuid, Default)]
+#[derive(Debug, Clone, TypeUuid, Default, Reflect, FromReflect)]
 #[uuid = "2c2788a6-ccfc-4f77-9c58-2f08c38e7ea0"]
 pub struct UiNodeTree(pub Vec<UiNode>);
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Reflect, FromReflect)]
 pub enum UiNode {
     #[default]
     Empty,
@@ -16,6 +19,19 @@ pub enum UiNode {
     Text(Text),
     RawText(StringExpression),
     IfElse(IfElse),
+}
+
+impl UiNode {
+    pub fn tag(&self) -> Name {
+        match self {
+            UiNode::Empty => Name::new("tg:empty"),
+            UiNode::Node(_) => Name::new("tg:node"),
+            UiNode::Image(_) => Name::new("tg:image"),
+            UiNode::Text(_) => Name::new("tg:text"),
+            UiNode::RawText(_) => Name::new("tg:raw_text"),
+            UiNode::IfElse(_) => Name::new("tg:if_else"),
+        }
+    }
 }
 
 fn ui_node_intermediary_to_node_vec(
@@ -127,7 +143,7 @@ pub enum UiNodeIntermediary {
     Else(IfElseTag),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Reflect, FromReflect)]
 pub struct Node<T: Default> {
     #[serde(rename = "$value", default)]
     pub children: Vec<T>,
@@ -139,7 +155,7 @@ pub struct Node<T: Default> {
     pub style: Option<StringExpression>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Reflect, FromReflect)]
 pub struct Image {
     #[serde(rename = "@name")]
     pub name: Option<StringExpression>,
@@ -151,7 +167,7 @@ pub struct Image {
     pub image_path: StringExpression,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Reflect, FromReflect)]
 pub struct Text {
     #[serde(rename = "@name")]
     pub name: Option<StringExpression>,
@@ -163,7 +179,7 @@ pub struct Text {
     pub text: StringExpression,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Reflect, FromReflect)]
 pub struct IfElse {
     pub conditions: Vec<(Option<SimpleExpression>, usize)>,
 }

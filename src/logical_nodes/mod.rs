@@ -54,6 +54,7 @@ impl GetExpressionHandlers<UiIfElse, ArrayExpression> for UiIfElse {
                     visibility: Visibility::Hidden,
                     ..Default::default()
                 },
+                Name::new(format!("Conditional Expression: {e:?}")),
             ));
         });
     }

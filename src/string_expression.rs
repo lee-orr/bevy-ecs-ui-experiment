@@ -1,12 +1,15 @@
 use std::str::FromStr;
 
-use bevy::math::bool;
+use bevy::{
+    math::bool,
+    reflect::{FromReflect, Reflect},
+};
 
 use serde::{de, Deserialize, Deserializer, Serialize};
 
 use crate::{expression::*, UIState};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Reflect, FromReflect)]
 pub enum StringExpression {
     Value(String),
     Expression(Vec<(String, bool)>),
