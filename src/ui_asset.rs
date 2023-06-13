@@ -94,9 +94,7 @@ fn ui_node_intermediary_to_node_vec(
             Some(if_id)
         }
         UiNodeIntermediary::Else(IfElseTag { condition, child }) => {
-            println!("Parsing Else");
             let Some(previous_id) = previous_sibling else {return None;};
-            println!("No Previous");
             let id = vec.len();
             let Some(previous) = vec.get_mut(*previous_id) else {
                 return None;
@@ -104,10 +102,9 @@ fn ui_node_intermediary_to_node_vec(
             let UiNode::IfElse(ref mut ifelse) = previous else {
                 return None;
             };
-            println!("Got If Else");
             ifelse.conditions.push((condition.clone(), id));
             ui_node_intermediary_to_node_vec(vec, child.as_ref(), &None);
-            *previous_sibling
+            None
         }
     }
 }

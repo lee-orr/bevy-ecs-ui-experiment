@@ -153,14 +153,16 @@ pub fn ui_if_else_changed<T: UIState>(
             _ => None,
         };
 
-        let _ = ui_child.unwrap_or(spawn_ui(
-            (entity, new_ui_child, Some(if_else.ui_parent)),
-            &mut commands,
-            &UiNode::Empty,
-            state,
-            &asset_server,
-            tree,
-            if_else.data_root,
-        ));
+        if ui_child.is_none() {
+            spawn_ui(
+                (entity, new_ui_child, Some(if_else.ui_parent)),
+                &mut commands,
+                &UiNode::Empty,
+                state,
+                &asset_server,
+                tree,
+                if_else.data_root,
+            );
+        }
     }
 }

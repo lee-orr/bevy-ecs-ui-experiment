@@ -221,6 +221,7 @@ pub fn spawn_ui<T: UIState>(
 
             let ui_child = match child {
                 Some(child) => tree.0.get(child).map(|node| {
+                    info!("CHILD TEST - {entity:?}");
                     spawn_ui(
                         (id, entity, parent),
                         commands,
@@ -234,15 +235,19 @@ pub fn spawn_ui<T: UIState>(
                 _ => None,
             };
 
-            let ui_child = ui_child.unwrap_or(spawn_ui(
-                (id, entity, parent),
-                commands,
-                &UiNode::Empty,
-                state,
-                asset_server,
-                tree,
-                data_root,
-            ));
+            let ui_child = if let Some(child) = ui_child {
+                child
+            } else {
+                spawn_ui(
+                    (id, entity, parent),
+                    commands,
+                    &UiNode::Empty,
+                    state,
+                    asset_server,
+                    tree,
+                    data_root,
+                )
+            };
 
             let ui_if_else = UiIfElse {
                 current_condition,
