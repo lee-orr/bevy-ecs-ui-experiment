@@ -212,7 +212,7 @@ pub fn spawn_ui<T: UIState>(
             let child_options: Vec<usize> = conditions.iter().map(|(_, id)| *id).collect();
 
             let current_condition = condition_expression.process(state);
-            let num_conditions = conditions.len();
+            let num_conditions = condition_expression.0.len();
 
             let child = match current_condition {
                 Some(id) => child_options.get(id).cloned(),

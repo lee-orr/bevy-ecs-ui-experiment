@@ -35,3 +35,9 @@ text#text.text_class {
     padding: 35px;
     flex-direction: column;
 }
+
+text.if_text {
+    color: #aaaa44;
+    font-size: 20; 
+    font: "libre-baskerville/LibreBaskerville-Bold.ttf";
+}

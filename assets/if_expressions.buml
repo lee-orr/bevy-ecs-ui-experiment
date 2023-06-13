@@ -1,9 +1,9 @@
 <node name="test">
     <node name="container" class="class1 class2">
         <txt name="main">Index is {{index()}}</txt>
-        <if condition="index() == 0"><txt name="is_zero">Index is ZERO</txt></if>
-        <else condition="index() > 10"><txt name="is_large">Index is Large</txt></else>
-        <else condition="index() > 5"><txt name="is_large">Index is Medium</txt></else>
-        <else><txt name="is_small">Index is Small</txt></else>
+        <if condition="index() == 0"><txt name="is_zero" class="if_text">Index is ZERO</txt></if>
+        <else condition="index() > 10"><txt name="is_large" class="if_text">Index is Large</txt></else>
+        <else condition="index() > 5"><txt name="is_large" class="if_text">Index is Medium</txt></else>
+        <else><txt name="is_small" class="if_text">Index is Small</txt></else>
     </node>
 </node>
