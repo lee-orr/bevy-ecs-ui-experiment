@@ -1,13 +1,13 @@
 use bevy::{
     prelude::info,
-    reflect::{FromReflect, GetPath, Reflect, TypeInfo, TypeUuid, ValueInfo},
+    reflect::{GetPath, TypeUuid},
 };
 
 use serde::{de, Deserialize, Deserializer, Serialize};
 
 use crate::UIState;
 
-use std::{any::TypeId, str::FromStr};
+use std::str::FromStr;
 
 #[derive(Clone, Debug, TypeUuid, Serialize, Deserialize)]
 #[uuid = "a84df920-9542-4e4b-8b2e-25601c9d5003"]
