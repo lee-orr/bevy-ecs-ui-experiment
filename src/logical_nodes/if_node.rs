@@ -75,6 +75,7 @@ impl ComponentExpressionHandler<UiIfElse, ()> for UiIfElseExpressionHandler {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn ui_if_else_changed<T: UIState>(
     mut if_else_query: Query<(Entity, &mut UiIfElse), Changed<UiIfElse>>,
     mut commands: Commands,

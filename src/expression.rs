@@ -82,6 +82,7 @@ impl<T: UIState> ExpressionEngine<T> {
         rhai.register_type_with_name::<&T>("State")
             .register_indexer_get(UIStateHandle::<T>::get_ui_state_field);
         let handle = UIStateHandle::from(context);
+        #[allow(deprecated)]
         rhai.on_var(move |name, _, _| {
             let handle = handle.clone();
             if name == "state" {

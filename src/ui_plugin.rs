@@ -96,6 +96,7 @@ fn display_ui<T: UIState>(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn spawn_ui<T: UIState>(
     (root, entity, parent): (Entity, Entity, Option<Entity>),
     commands: &mut Commands,
@@ -289,6 +290,7 @@ pub fn spawn_ui<T: UIState>(
     entity
 }
 
+#[allow(clippy::too_many_arguments)]
 fn setup_common_components<T: UIState>(
     name: &Option<StringExpression>,
     commands: &mut Commands,
