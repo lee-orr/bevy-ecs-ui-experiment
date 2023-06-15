@@ -19,6 +19,7 @@ pub enum UiNode {
     Text(Text),
     RawText(StringExpression),
     IfElse(IfElse),
+    For(For),
 }
 
 impl UiNode {
@@ -30,6 +31,7 @@ impl UiNode {
             UiNode::Text(_) => Name::new("tg:text"),
             UiNode::RawText(_) => Name::new("tg:raw_text"),
             UiNode::IfElse(_) => Name::new("tg:if_else"),
+            UiNode::For(_) => Name::new("tg:for"),
         }
     }
 }
@@ -106,6 +108,22 @@ fn ui_node_intermediary_to_node_vec(
             ui_node_intermediary_to_node_vec(vec, child.as_ref(), &None);
             None
         }
+        UiNodeIntermediary::For(ForTag {
+            child_template,
+            key,
+            collection,
+        }) => {
+            let for_id = vec.len();
+            let child_id = for_id + 1;
+
+            vec.push(UiNode::For(For {
+                child_template: child_id,
+                key: key.clone(),
+                collection: collection.clone(),
+            }));
+            ui_node_intermediary_to_node_vec(vec, child_template.as_ref(), &None);
+            Some(for_id)
+        }
     }
 }
 
@@ -138,6 +156,8 @@ pub enum UiNodeIntermediary {
     If(IfElseTag),
     #[serde(rename = "else")]
     Else(IfElseTag),
+    #[serde(rename = "for")]
+    For(ForTag),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Reflect, FromReflect)]
@@ -187,6 +207,23 @@ pub struct IfElseTag {
     pub condition: Option<SimpleExpression>,
     #[serde(rename = "$value")]
     pub child: Box<UiNodeIntermediary>,
+}
+
+#[derive(Debug, Clone, Reflect, FromReflect)]
+pub struct For {
+    pub child_template: usize,
+    pub key: Option<SimpleExpression>,
+    pub collection: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForTag {
+    #[serde(rename = "$value")]
+    pub child_template: Box<UiNodeIntermediary>,
+    #[serde(rename = "@key")]
+    pub key: Option<SimpleExpression>,
+    #[serde(rename = "@collection")]
+    pub collection: String,
 }
 
 #[cfg(test)]
@@ -365,6 +402,34 @@ mod test {
         let UiNode::RawText(text) = parsed.0[*child].clone() else { panic!("Not a node") };
 
         assert_eq!(text.process(&NoContext), "test");
+    }
+
+    #[test]
+    fn can_deserialize_a_loop_node() {
+        let asset = r#"<for collection="my_collection" ><node></node></for>"#;
+        let parsed: UiNodeTree = from_str(asset).unwrap();
+        let UiNode::For(For { child_template, key, collection }) = parsed.0[0].clone() else { panic!("Not a node")};
+
+        assert!(key.is_none());
+        assert_eq!(collection, "my_collection");
+        assert_eq!(child_template, 1);
+
+        let UiNode::Node(Node { children: _, name: _, class: _, style: _ }) = parsed.0[child_template].clone() else { panic!("Not a node") };
+    }
+    #[test]
+    fn can_deserialize_a_loop_node_with_a_key_expression() {
+        let asset = r#"<for collection="my_collection" key="1 + 2" ><node></node></for>"#;
+        let parsed: UiNodeTree = from_str(asset).unwrap();
+        let UiNode::For(For { child_template, key, collection }) = parsed.0[0].clone() else { panic!("Not a node")};
+
+        let Some(key) = key else { panic!("No Key");};
+        let value: u32 = key.process(&NoContext);
+        assert_eq!(value, 3);
+
+        assert_eq!(collection, "my_collection");
+        assert_eq!(child_template, 1);
+
+        let UiNode::Node(Node { children: _, name: _, class: _, style: _ }) = parsed.0[child_template].clone() else { panic!("Not a node") };
     }
 
     #[test]

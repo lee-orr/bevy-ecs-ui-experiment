@@ -277,6 +277,7 @@ pub fn spawn_ui<T: UIState>(
                 tag_name,
             ));
         }
+        UiNode::For(_) => todo!(),
     }
     entity
 }
