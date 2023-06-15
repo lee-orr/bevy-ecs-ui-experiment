@@ -24,4 +24,4 @@ impl Plugin for EcsUiPlugin {
     }
 }
 
-pub type ExpressionValue = evalexpr::Value;
+pub type ExpressionValue = rhai::Dynamic;

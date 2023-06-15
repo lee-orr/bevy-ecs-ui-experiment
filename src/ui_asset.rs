@@ -6,11 +6,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{string_expression::StringExpression, SimpleExpression};
 
-#[derive(Debug, Clone, TypeUuid, Default, Reflect, FromReflect)]
+#[derive(Debug, Clone, TypeUuid, Default)]
 #[uuid = "2c2788a6-ccfc-4f77-9c58-2f08c38e7ea0"]
 pub struct UiNodeTree(pub Vec<UiNode>);
 
-#[derive(Debug, Clone, Default, Reflect, FromReflect)]
+#[derive(Debug, Clone, Default)]
 pub enum UiNode {
     #[default]
     Empty,
@@ -160,7 +160,7 @@ pub enum UiNodeIntermediary {
     For(ForTag),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Reflect, FromReflect)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Node<T: Default> {
     #[serde(rename = "$value", default)]
     pub children: Vec<T>,
@@ -172,7 +172,7 @@ pub struct Node<T: Default> {
     pub style: Option<StringExpression>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Reflect, FromReflect)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Image {
     #[serde(rename = "@name")]
     pub name: Option<StringExpression>,
@@ -184,7 +184,7 @@ pub struct Image {
     pub image_path: StringExpression,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Reflect, FromReflect)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Text {
     #[serde(rename = "@name")]
     pub name: Option<StringExpression>,
@@ -196,7 +196,7 @@ pub struct Text {
     pub text: StringExpression,
 }
 
-#[derive(Debug, Clone, Reflect, FromReflect)]
+#[derive(Debug, Clone)]
 pub struct IfElse {
     pub conditions: Vec<(Option<SimpleExpression>, usize)>,
 }
@@ -209,7 +209,7 @@ pub struct IfElseTag {
     pub child: Box<UiNodeIntermediary>,
 }
 
-#[derive(Debug, Clone, Reflect, FromReflect)]
+#[derive(Debug, Clone)]
 pub struct For {
     pub child_template: usize,
     pub key: Option<SimpleExpression>,

@@ -8,8 +8,6 @@ fn main() {
             watch_for_changes: true,
             ..Default::default()
         }))
-        .register_type::<ui_asset::UiNodeTree>()
-        .register_asset_reflect::<ui_asset::UiNodeTree>()
         .add_plugin(EcsUiPlugin)
         .add_plugin(UiPlugin::<MyUi>::new().initialize("for_expressions.buml", "simple.css"))
         .add_startup_system(setup)

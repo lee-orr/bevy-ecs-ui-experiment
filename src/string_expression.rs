@@ -9,16 +9,16 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 
 use crate::{expression::*, UIState};
 
-#[derive(Debug, Clone, Serialize, Reflect, FromReflect)]
+#[derive(Debug, Clone, Serialize)]
 pub enum StringExpression {
     Value(String),
     Expression(Vec<ExpressionSection>),
 }
 
-#[derive(Debug, Clone, Serialize, Reflect, FromReflect)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ExpressionSection {
     Value(String),
-    Expression(String),
+    Expression(RawExpression),
 }
 
 impl Expression<String> for StringExpression {
@@ -69,7 +69,9 @@ impl FromStr for StringExpression {
                 };
                     [
                         Some(ExpressionSection::Value(before.to_string())),
-                        Some(ExpressionSection::Expression(after.to_string())),
+                        RawExpression::from_str(after)
+                            .ok()
+                            .map(ExpressionSection::Expression),
                     ]
                 })
                 .flatten()
@@ -147,7 +149,10 @@ mod test {
         };
 
         let expression = StringExpression::Expression(vec![ExpressionSection::Expression(
-            "str::from(number() + 2) + \" is the result of the \" + string()".to_string(),
+            RawExpression::from_str(
+                "str::from(number() + 2) + \" is the result of the \" + string()",
+            )
+            .unwrap(),
         )]);
         let result = expression.process(&state);
 

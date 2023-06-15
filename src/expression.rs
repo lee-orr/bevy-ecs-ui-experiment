@@ -1,22 +1,46 @@
 use bevy::{
     prelude::info,
-    reflect::{FromReflect, GetPath, Reflect},
+    reflect::{FromReflect, GetPath, Reflect, TypeInfo, TypeUuid, ValueInfo},
 };
 
 use serde::{de, Deserialize, Deserializer, Serialize};
 
 use crate::UIState;
 
-use std::str::FromStr;
+use std::{any::TypeId, str::FromStr};
+
+#[derive(Clone, Debug, TypeUuid, Serialize, Deserialize)]
+#[uuid = "a84df920-9542-4e4b-8b2e-25601c9d5003"]
+pub struct RawExpression(pub String);
+
+impl FromStr for RawExpression {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(s.to_string()))
+    }
+}
+
+impl ToString for RawExpression {
+    fn to_string(&self) -> String {
+        self.0.clone()
+    }
+}
+
+impl RawExpression {
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
 
 pub trait Expression<Val>: Send + Sync + Clone {
     fn process<T: UIState>(&self, context: &T) -> Val;
 }
 
-#[derive(Debug, Clone, Serialize, Reflect, FromReflect)]
-pub struct SimpleExpression(String);
+#[derive(Debug, Clone, Serialize)]
+pub struct SimpleExpression(pub RawExpression);
 
-#[derive(Debug, Clone, Reflect, FromReflect)]
+#[derive(Debug, Clone)]
 pub struct ArrayExpression(pub Vec<SimpleExpression>);
 
 impl Expression<Option<usize>> for ArrayExpression {
@@ -36,7 +60,7 @@ impl Expression<Option<usize>> for ArrayExpression {
 impl FromStr for SimpleExpression {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(s.to_string()))
+        Ok(Self(RawExpression::from_str(s)?))
     }
 }
 
