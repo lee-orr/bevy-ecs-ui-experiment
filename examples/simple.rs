@@ -16,7 +16,7 @@ fn main() {
         .run();
 }
 
-#[derive(Component, Reflect)]
+#[derive(Component, Reflect, Clone, Debug)]
 pub struct MyUi;
 
 fn setup(mut commands: Commands, _assets: ResMut<AssetServer>) {

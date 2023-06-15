@@ -225,13 +225,13 @@ pub struct ForTag {
 
 #[cfg(test)]
 mod test {
-    use crate::Expression;
+    use crate::{Expression, ExpressionEngine};
 
     use super::*;
     use bevy::{prelude::Component, reflect::Reflect};
     use quick_xml::de::from_str;
 
-    #[derive(Component, Reflect)]
+    #[derive(Component, Reflect, Clone, Debug)]
     pub struct NoContext;
 
     #[test]
@@ -251,7 +251,11 @@ mod test {
         let parsed: UiNodeTree = from_str(asset).unwrap();
         let UiNode::Node(Node { name, class, style, children }) = parsed.0[0].clone() else { panic!("Not a node") };
         assert_eq!(children.len(), 0);
-        assert_eq!(name.unwrap().process(&NoContext), "test");
+        assert_eq!(
+            name.unwrap()
+                .process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+            "test"
+        );
         assert!(class.is_none());
         assert!(style.is_none());
     }
@@ -262,7 +266,12 @@ mod test {
         let parsed: UiNodeTree = from_str(asset).unwrap();
         let UiNode::Node(Node { name, class, style, children }) = parsed.0[0].clone() else { panic!("Not a node") };
         assert_eq!(children.len(), 0);
-        assert_eq!(class.unwrap().process(&NoContext), "test");
+        assert_eq!(
+            class
+                .unwrap()
+                .process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+            "test"
+        );
         assert!(name.is_none());
         assert!(style.is_none());
     }
@@ -273,7 +282,12 @@ mod test {
         let parsed: UiNodeTree = from_str(asset).unwrap();
         let UiNode::Node(Node { name, class, style, children }) = parsed.0[0].clone() else { panic!("Not a node") };
         assert_eq!(children.len(), 0);
-        assert_eq!(style.unwrap().process(&NoContext), "test");
+        assert_eq!(
+            style
+                .unwrap()
+                .process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+            "test"
+        );
         assert!(name.is_none());
         assert!(class.is_none());
     }
@@ -294,7 +308,10 @@ mod test {
         let asset = r#"<img src="test.png"></img>"#;
         let parsed: UiNodeTree = from_str(asset).unwrap();
         let UiNode::Image(Image { name, class, style, image_path }) = parsed.0[0].clone() else { panic!("Not a node") };
-        assert_eq!(image_path.process(&NoContext), "test.png");
+        assert_eq!(
+            image_path.process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+            "test.png"
+        );
         assert!(name.is_none());
         assert!(class.is_none());
         assert!(style.is_none());
@@ -305,7 +322,10 @@ mod test {
         let asset = r#"<txt val="some text"></txt>"#;
         let parsed: UiNodeTree = from_str(asset).unwrap();
         let UiNode::Text(Text { name, class, style, text }) = parsed.0[0].clone() else { panic!("Not a node") };
-        assert_eq!(text.process(&NoContext), "some text");
+        assert_eq!(
+            text.process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+            "some text"
+        );
         assert!(name.is_none());
         assert!(class.is_none());
         assert!(style.is_none());
@@ -316,7 +336,10 @@ mod test {
         let asset = r#"<txt>some text</txt>"#;
         let parsed: UiNodeTree = from_str(asset).unwrap();
         let UiNode::Text(Text { name, class, style, text }) = parsed.0[0].clone() else { panic!("Not a node") };
-        assert_eq!(text.process(&NoContext), "some text");
+        assert_eq!(
+            text.process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+            "some text"
+        );
         assert!(name.is_none());
         assert!(class.is_none());
         assert!(style.is_none());
@@ -328,7 +351,10 @@ mod test {
         let parsed: UiNodeTree = from_str(asset).unwrap();
         let UiNode::Node(Node { name: _, class: _, style: _, children}) = parsed.0[0].clone() else { panic!("Not a node")};
         let UiNode::RawText(text) = parsed.0[*children.first().unwrap()].clone() else { panic!("Not a node") };
-        assert_eq!(text.process(&NoContext), "some text");
+        assert_eq!(
+            text.process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+            "some text"
+        );
     }
 
     #[test]
@@ -341,7 +367,7 @@ mod test {
 
         let (Some(condition), child) = &conditions[0] else { panic!("No Condition")};
 
-        let condition: bool = condition.process(&NoContext);
+        let condition: bool = condition.process(&NoContext, &ExpressionEngine::<NoContext>::new());
         assert!(condition);
 
         let UiNode::Node(Node { children: _, name: _, class: _, style: _ }) = parsed.0[*child].clone() else { panic!("Not a node") };
@@ -358,7 +384,7 @@ mod test {
 
         let (Some(condition), child) = &conditions[0] else { panic!("No Condition")};
 
-        let condition: bool = condition.process(&NoContext);
+        let condition: bool = condition.process(&NoContext, &ExpressionEngine::<NoContext>::new());
         assert!(condition);
         let UiNode::Node(Node { children: _, name: _, class: _, style: _ }) = parsed.0[*child].clone() else { panic!("Not a node") };
 
@@ -366,7 +392,10 @@ mod test {
 
         let UiNode::RawText(text) = parsed.0[*child].clone() else { panic!("Not a node") };
 
-        assert_eq!(text.process(&NoContext), "test");
+        assert_eq!(
+            text.process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+            "test"
+        );
     }
 
     #[test]
@@ -382,23 +411,29 @@ mod test {
 
         let (Some(condition), child) = &conditions[0] else { panic!("No Condition")};
 
-        let condition: bool = condition.process(&NoContext);
+        let condition: bool = condition.process(&NoContext, &ExpressionEngine::<NoContext>::new());
         assert!(condition);
         let UiNode::Node(Node { children: _, name: _, class: _, style: _ }) = parsed.0[*child].clone() else { panic!("Not a node") };
 
         let (Some(condition), child) = &conditions[1] else { panic!("No Condition")};
 
-        let condition: bool = condition.process(&NoContext);
+        let condition: bool = condition.process(&NoContext, &ExpressionEngine::<NoContext>::new());
         assert!(!condition);
         let UiNode::RawText(text) = parsed.0[*child].clone() else { panic!("Not a node") };
 
-        assert_eq!(text.process(&NoContext), "run");
+        assert_eq!(
+            text.process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+            "run"
+        );
 
         let (None, child) = &conditions[2] else { panic!("False Condition Shouldn't Exist")};
 
         let UiNode::RawText(text) = parsed.0[*child].clone() else { panic!("Not a node") };
 
-        assert_eq!(text.process(&NoContext), "test");
+        assert_eq!(
+            text.process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+            "test"
+        );
     }
 
     #[test]
@@ -420,7 +455,7 @@ mod test {
         let UiNode::For(For { child_template, key, collection }) = parsed.0[0].clone() else { panic!("Not a node")};
 
         let Some(key) = key else { panic!("No Key");};
-        let value: u32 = key.process(&NoContext);
+        let value: u32 = key.process(&NoContext, &ExpressionEngine::<NoContext>::new());
         assert_eq!(value, 3);
 
         assert_eq!(collection, "my_collection");
@@ -442,27 +477,68 @@ mod test {
         "#;
         let parsed: UiNodeTree = from_str(asset).unwrap();
         let UiNode::Node(Node { name, class: _, style: _, children}) = &parsed.0[0].clone() else { panic!("Not a node")};
-        assert_eq!(name.clone().unwrap().process(&NoContext), "test");
+        assert_eq!(
+            name.clone()
+                .unwrap()
+                .process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+            "test"
+        );
 
         let UiNode::Node(Node { name: _, class, style: _, children}) = &parsed.0[*children.first().unwrap()] else { panic!("Not a node")};
-        assert_eq!(class.clone().unwrap().process(&NoContext), "class1 class2");
+        assert_eq!(
+            class
+                .clone()
+                .unwrap()
+                .process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+            "class1 class2"
+        );
 
         {
             let UiNode::Image(Image { name, class, style: _, image_path}) = &parsed.0[*children.first().unwrap()] else { panic!("Not a node")};
-            assert_eq!(image_path.process(&NoContext), "test-image.png");
-            assert_eq!(class.clone().unwrap().process(&NoContext), "img_class");
-            assert_eq!(name.clone().unwrap().process(&NoContext), "image");
+            assert_eq!(
+                image_path.process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+                "test-image.png"
+            );
+            assert_eq!(
+                class
+                    .clone()
+                    .unwrap()
+                    .process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+                "img_class"
+            );
+            assert_eq!(
+                name.clone()
+                    .unwrap()
+                    .process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+                "image"
+            );
         }
         {
             let UiNode::RawText(text) = &parsed.0[*children.get(1).unwrap()] else { panic!("not a text")};
-            assert_eq!(text.clone().process(&NoContext), "some raw text");
+            assert_eq!(
+                text.clone()
+                    .process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+                "some raw text"
+            );
         }
         {
             let UiNode::Text(Text { name: _, class, style, text}) = &parsed.0[*children.get(2).unwrap()] else { panic!("Not a node")};
-            assert_eq!(text.process(&NoContext), "my text");
-            assert_eq!(class.clone().unwrap().process(&NoContext), "text_class");
             assert_eq!(
-                style.clone().unwrap().process(&NoContext),
+                text.process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+                "my text"
+            );
+            assert_eq!(
+                class
+                    .clone()
+                    .unwrap()
+                    .process(&NoContext, &ExpressionEngine::<NoContext>::new()),
+                "text_class"
+            );
+            assert_eq!(
+                style
+                    .clone()
+                    .unwrap()
+                    .process(&NoContext, &ExpressionEngine::<NoContext>::new()),
                 "font: libre-baskerville/LibreBaskerville-Regular.ttf;"
             );
         }

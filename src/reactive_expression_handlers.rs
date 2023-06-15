@@ -4,7 +4,8 @@ use bevy::{ecs::system::EntityCommands, prelude::*, text::Text, ui::UiImage};
 use bevy_ecss::Class;
 
 use crate::{
-    logical_nodes::LogicalNodesPlugin, string_expression::StringExpression, Expression, UIState,
+    logical_nodes::LogicalNodesPlugin, string_expression::StringExpression, Expression,
+    ExpressionEngine, UIState,
 };
 
 #[derive(Component)]
@@ -45,8 +46,9 @@ impl<
         &mut self,
         state: &T,
         current: impl PartialEq<V>,
+        engine: &ExpressionEngine<T>,
     ) -> Option<V> {
-        let new_val = self.expression.process(state);
+        let new_val = self.expression.process(state, engine);
         if !current.eq(&new_val) {
             info!("process found: new val");
             Some(new_val)
@@ -59,7 +61,13 @@ impl<
 
 pub trait ComponentExpressionHandler<C: Component, D> {
     fn get_source_entity(&self) -> Entity;
-    fn conditional_update<T: UIState>(&mut self, c: &mut C, state: &T, added_data: D);
+    fn conditional_update<T: UIState>(
+        &mut self,
+        c: &mut C,
+        state: &T,
+        engine: &ExpressionEngine<T>,
+        added_data: D,
+    );
 }
 
 pub trait GetExpressionHandlers<C: Component, Expressions> {
@@ -85,12 +93,14 @@ pub fn component_expression_change_handler<
     parents: Query<&Children, With<ReactiveParent<T>>>,
     reactive: Query<&mut H>,
     components: Query<&mut C>,
+    engine: Res<ExpressionEngine<T>>,
 ) {
     component_expression_change_handler_with_added_data::<T, C, (), H>(
         roots,
         parents,
         reactive,
         components,
+        engine,
         (),
     );
 }
@@ -105,6 +115,7 @@ pub fn component_expression_change_handler_with_resource<
     parents: Query<&Children, With<ReactiveParent<T>>>,
     reactive: Query<&mut H>,
     components: Query<&mut C>,
+    engine: Res<ExpressionEngine<T>>,
     resource: Res<R>,
 ) {
     component_expression_change_handler_with_added_data::<T, C, &R, H>(
@@ -112,6 +123,7 @@ pub fn component_expression_change_handler_with_resource<
         parents,
         reactive,
         components,
+        engine,
         resource.as_ref(),
     );
 }
@@ -126,6 +138,7 @@ pub fn component_expression_change_handler_with_added_data<
     parents: Query<&Children, With<ReactiveParent<T>>>,
     mut reactive: Query<&mut H>,
     mut components: Query<&mut C>,
+    engine: Res<ExpressionEngine<T>>,
     resource: R,
 ) {
     for (state, children) in roots.iter() {
@@ -135,6 +148,7 @@ pub fn component_expression_change_handler_with_added_data<
             &parents,
             &mut reactive,
             &mut components,
+            engine.as_ref(),
             resource,
         );
     }
@@ -151,16 +165,17 @@ fn component_expression_change_individual_nahdler<
     parents: &Query<&Children, With<ReactiveParent<T>>>,
     reactives: &mut Query<&mut H>,
     components: &mut Query<&mut C>,
+    engine: &ExpressionEngine<T>,
     resource: R,
 ) {
     for child in children.iter() {
         let Ok(mut reactive) = reactives.get_mut(*child) else { continue;};
         let Ok(mut c) = components.get_mut(reactive.get_source_entity()) else { continue; };
-        reactive.conditional_update(&mut c, state, resource);
+        reactive.conditional_update(&mut c, state, engine, resource);
 
         let Ok(children) = parents.get(*child) else { continue; };
         component_expression_change_individual_nahdler(
-            children, state, parents, reactives, components, resource,
+            children, state, parents, reactives, components, engine, resource,
         );
     }
 }
@@ -230,8 +245,14 @@ impl ComponentExpressionHandler<Name, ()> for NameExpressionHandler {
         self.entity
     }
 
-    fn conditional_update<T: UIState>(&mut self, c: &mut Name, state: &T, _added_data: ()) {
-        if let Some(nv) = self.internal_conditional_update(state, c.as_str()) {
+    fn conditional_update<T: UIState>(
+        &mut self,
+        c: &mut Name,
+        state: &T,
+        engine: &ExpressionEngine<T>,
+        _added_data: (),
+    ) {
+        if let Some(nv) = self.internal_conditional_update(state, c.as_str(), engine) {
             c.set(nv);
         }
     }
@@ -267,8 +288,14 @@ impl ComponentExpressionHandler<Class, ()> for ClassExpressionHandler {
         self.entity
     }
 
-    fn conditional_update<T: UIState>(&mut self, c: &mut Class, state: &T, _added_data: ()) {
-        if let Some(nv) = self.internal_conditional_update(state, c.to_string()) {
+    fn conditional_update<T: UIState>(
+        &mut self,
+        c: &mut Class,
+        state: &T,
+        engine: &ExpressionEngine<T>,
+        _added_data: (),
+    ) {
+        if let Some(nv) = self.internal_conditional_update(state, c.to_string(), engine) {
             *c = Class::new(nv);
         }
     }
@@ -304,7 +331,13 @@ impl ComponentExpressionHandler<Text, ()> for TextExpressionHandler {
         self.entity
     }
 
-    fn conditional_update<T: UIState>(&mut self, c: &mut Text, state: &T, _added_data: ()) {
+    fn conditional_update<T: UIState>(
+        &mut self,
+        c: &mut Text,
+        state: &T,
+        engine: &ExpressionEngine<T>,
+        _added_data: (),
+    ) {
         let current = c
             .sections
             .iter()
@@ -312,7 +345,7 @@ impl ComponentExpressionHandler<Text, ()> for TextExpressionHandler {
             .collect::<Vec<_>>()
             .join("");
         println!("Current Text: {current}");
-        if let Some(nv) = self.internal_conditional_update(state, current) {
+        if let Some(nv) = self.internal_conditional_update(state, current, engine) {
             println!("Processed Text: {nv}");
             let style = c
                 .sections
@@ -360,10 +393,11 @@ impl ComponentExpressionHandler<UiImage, &AssetServer> for UiImageExpressionHand
         &mut self,
         c: &mut UiImage,
         state: &T,
+        engine: &ExpressionEngine<T>,
         added_data: &AssetServer,
     ) {
         let current = self.cached_current.clone();
-        if let Some(nv) = self.internal_conditional_update(state, current) {
+        if let Some(nv) = self.internal_conditional_update(state, current, engine) {
             self.cached_current = nv.clone();
             c.texture = added_data.load(nv);
         }

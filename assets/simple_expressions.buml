@@ -2,8 +2,8 @@
     <node class="class1 class2">
         <img class="img_class" name="image" src="test-image.png"/>
         Press Enter to add "!" below:
-                {{test()}}
-        <txt name="text" class="text_class" style="font: libre-baskerville/LibreBaskerville-Regular.ttf;">my text: {{test()}}</txt>
+                {{state.test}}
+        <txt name="text" class="text_class" style="font: libre-baskerville/LibreBaskerville-Regular.ttf;">my text: {{state.test}}</txt>
         Oh No :)
     </node>
 </node>

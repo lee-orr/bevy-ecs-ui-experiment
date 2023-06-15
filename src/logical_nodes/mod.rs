@@ -27,14 +27,14 @@ impl<T: UIState> Plugin for LogicalNodesPlugin<T> {
                     if_node::UiIfElse,
                     if_node::UiIfElseExpressionHandler,
                 >,
-            )
-            .add_system(for_node::ui_for_changed::<T>.in_base_set(CoreSet::PostUpdate))
-            .add_system(
-                component_expression_change_handler::<
-                    T,
-                    for_node::UiFor,
-                    for_node::UiForExpressionHandler,
-                >,
             );
+        // .add_system(for_node::ui_for_changed::<T>.in_base_set(CoreSet::PostUpdate))
+        // .add_system(
+        //     component_expression_change_handler::<
+        //         T,
+        //         for_node::UiFor,
+        //         for_node::UiForExpressionHandler,
+        //     >,
+        // );
     }
 }

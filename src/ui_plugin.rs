@@ -11,14 +11,15 @@ use crate::{
     },
     string_expression::StringExpression,
     ui_asset::{IfElse, Image, Node, Text, UiNodeTree},
-    ArrayExpression, UiNode,
+    ArrayExpression, ExpressionEngine, UiNode,
 };
 
 pub struct UiPlugin<T: UIState>(PhantomData<T>, Option<(String, String)>);
 
 impl<T: UIState> Plugin for UiPlugin<T> {
     fn build(&self, app: &mut App) {
-        app.add_system(display_ui::<T>.in_base_set(CoreSet::PostUpdate))
+        app.init_resource::<ExpressionEngine<T>>()
+            .add_system(display_ui::<T>.in_base_set(CoreSet::PostUpdate))
             .add_system(hot_reload_assets::<T>.in_base_set(CoreSet::PreUpdate))
             .add_plugin(ReactiveExpressionPlugin::<T>::default());
         if let Some((uri, style)) = &self.1 {
@@ -70,6 +71,7 @@ fn display_ui<T: UIState>(
     ui: Query<(Entity, &T), Without<InitializedUi<T>>>,
     handle: Option<Res<UiHandle<T>>>,
     asset_server: Res<AssetServer>,
+    engine: Res<ExpressionEngine<T>>,
 ) {
     let Some(handle) = handle else { return; };
     let sheet = &handle.style;
@@ -89,6 +91,7 @@ fn display_ui<T: UIState>(
             asset_server.as_ref(),
             tree,
             entity,
+            engine.as_ref(),
         );
     }
 }
@@ -101,6 +104,7 @@ pub fn spawn_ui<T: UIState>(
     asset_server: &AssetServer,
     tree: &UiNodeTree,
     data_root: Entity,
+    engine: &ExpressionEngine<T>,
 ) -> Entity {
     let tag_name = node.tag();
     match node {
@@ -110,7 +114,7 @@ pub fn spawn_ui<T: UIState>(
             class,
             style: _,
         }) => {
-            setup_common_components(name, commands, entity, root, state, class, tag_name);
+            setup_common_components(name, commands, entity, root, state, class, tag_name, engine);
             commands.entity(entity).insert(NodeBundle::default());
             let children = children
                 .iter()
@@ -126,6 +130,7 @@ pub fn spawn_ui<T: UIState>(
                         asset_server,
                         tree,
                         data_root,
+                        engine,
                     ))
                 })
                 .collect::<Vec<_>>();
@@ -137,9 +142,9 @@ pub fn spawn_ui<T: UIState>(
             style: _,
             image_path,
         }) => {
-            setup_common_components(name, commands, entity, root, state, class, tag_name);
+            setup_common_components(name, commands, entity, root, state, class, tag_name, engine);
 
-            let path = image_path.process(state);
+            let path = image_path.process(state, engine);
 
             let texture: Handle<bevy::prelude::Image> = asset_server.load(&path);
 
@@ -166,9 +171,9 @@ pub fn spawn_ui<T: UIState>(
             style: _,
             text: text_expression,
         }) => {
-            setup_common_components(name, commands, entity, root, state, class, tag_name);
+            setup_common_components(name, commands, entity, root, state, class, tag_name, engine);
 
-            let value = text_expression.process(state);
+            let value = text_expression.process(state, engine);
             let text = bevy::text::Text::from_section(value, TextStyle::default());
             text.setup_expression_handlers(
                 &mut commands.entity(root),
@@ -182,7 +187,7 @@ pub fn spawn_ui<T: UIState>(
             });
         }
         UiNode::RawText(text_expression) => {
-            let value = text_expression.process(state);
+            let value = text_expression.process(state, engine);
             let text = bevy::text::Text::from_section(value, TextStyle::default());
             text.setup_expression_handlers(
                 &mut commands.entity(root),
@@ -211,7 +216,7 @@ pub fn spawn_ui<T: UIState>(
 
             let child_options: Vec<usize> = conditions.iter().map(|(_, id)| *id).collect();
 
-            let current_condition = condition_expression.process(state);
+            let current_condition = condition_expression.process(state, engine);
             let num_conditions = condition_expression.0.len();
 
             let child = match current_condition {
@@ -230,6 +235,7 @@ pub fn spawn_ui<T: UIState>(
                         asset_server,
                         tree,
                         data_root,
+                        engine,
                     )
                 }),
                 _ => None,
@@ -246,6 +252,7 @@ pub fn spawn_ui<T: UIState>(
                     asset_server,
                     tree,
                     data_root,
+                    engine,
                 )
             };
 
@@ -290,16 +297,17 @@ fn setup_common_components<T: UIState>(
     state: &T,
     class: &Option<StringExpression>,
     tag_name: Name,
+    engine: &ExpressionEngine<T>,
 ) {
     if let Some(name) = name {
-        let n = Name::new(name.process(state));
+        let n = Name::new(name.process(state, engine));
         n.setup_expression_handlers(&mut commands.entity(root), entity, name.clone());
         commands.entity(entity).insert(n);
     } else {
         commands.entity(entity).insert(tag_name);
     }
     if let Some(class) = class {
-        let c = Class::new(class.process(state));
+        let c = Class::new(class.process(state, engine));
         c.setup_expression_handlers(&mut commands.entity(root), entity, class.clone());
         commands.entity(entity).insert(c);
     }
@@ -362,6 +370,6 @@ fn hot_reload_assets<T: UIState>(
     }
 }
 
-pub trait UIState: Component + Reflect {}
+pub trait UIState: Component + Reflect + Clone + std::fmt::Debug {}
 
-impl<T: Component + Reflect> UIState for T {}
+impl<T: Component + Reflect + Clone + std::fmt::Debug> UIState for T {}

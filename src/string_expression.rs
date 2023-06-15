@@ -17,24 +17,24 @@ pub enum ExpressionSection {
 }
 
 impl Expression<String> for StringExpression {
-    fn process<T: UIState>(&self, context: &T) -> String {
+    fn process<T: UIState>(&self, context: &T, engine: &ExpressionEngine<T>) -> String {
         match self {
             StringExpression::Value(s) => s.to_owned(),
             StringExpression::Expression(v) => {
                 let len = v.len();
-                let ctx = InternalParser(context);
                 v.iter()
                     .fold(Vec::with_capacity(len), |mut v, expo| {
                         match expo {
                             ExpressionSection::Expression(expr) => {
-                                let str = evalexpr::eval_with_context(expr.as_str(), &ctx);
-                                if let Err(e) = &str {
-                                    eprintln!("Eval Error: {e:+?}");
-                                }
-                                let val = str.unwrap_or(evalexpr::Value::Empty);
-                                let val = match &val {
-                                    evalexpr::Value::String(s) => s.to_string(),
-                                    _ => val.to_string(),
+                                let str = engine
+                                    .process_expression(context, expr)
+                                    .map(|v| v.into_string());
+                                let val = match str {
+                                    Ok(Ok(v)) => v,
+                                    Ok(Err(e)) => {
+                                        format!("innter: {e:?}")
+                                    }
+                                    Err(e) => format!("outer: {e:?}"),
                                 };
                                 v.push(val);
                             }
@@ -91,7 +91,7 @@ mod test {
     use super::*;
     use bevy::prelude::*;
 
-    #[derive(Component, Reflect, Default)]
+    #[derive(Component, Reflect, Default, Clone, Debug)]
     struct State {
         number: i32,
         string: String,
@@ -112,6 +112,7 @@ mod test {
         assert_eq!(v.as_str(), "This has expressions ");
 
         let ExpressionSection::Expression(v) = expression.get(1).unwrap() else { panic!("Should contain an expression")};
+        eprintln!("Expression is: {v:+?}");
         assert_eq!(v.as_str(), "1 + 2");
 
         let ExpressionSection::Value(v) = expression.get(2).unwrap() else { panic!("Should end with a value")};
@@ -128,7 +129,7 @@ mod test {
         let expression = StringExpression::Value(
             "(number() + 2).to_string() + \" is the result of the \" + string()".to_string(),
         );
-        let result = expression.process(&state);
+        let result = expression.process(&state, &ExpressionEngine::<State>::new());
 
         assert_eq!(
             result,
@@ -145,11 +146,11 @@ mod test {
 
         let expression = StringExpression::Expression(vec![ExpressionSection::Expression(
             RawExpression::from_str(
-                "str::from(number() + 2) + \" is the result of the \" + string()",
+                "(state.number + 2).to_string() + \" is the result of the \" + state.string",
             )
             .unwrap(),
         )]);
-        let result = expression.process(&state);
+        let result = expression.process(&state, &ExpressionEngine::<State>::new());
 
         assert_eq!(result, "7 is the result of the Test");
     }
@@ -157,8 +158,9 @@ mod test {
     #[test]
     fn processes_a_parsed_string_correctly() {
         let state = State::default();
-        let expression = StringExpression::from_str("This has expressions {{1 + 2}}!").unwrap();
-        let result = expression.process(&state);
+        let expression =
+            StringExpression::from_str("This has expressions {{(1 + 2).to_string()}}!").unwrap();
+        let result = expression.process(&state, &ExpressionEngine::<State>::new());
         assert_eq!(result, "This has expressions 3!");
     }
 }

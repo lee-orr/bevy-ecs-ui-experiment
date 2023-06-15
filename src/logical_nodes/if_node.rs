@@ -1,3 +1,4 @@
+use crate::ExpressionEngine;
 use crate::UiNode;
 
 use crate::ui_plugin::spawn_ui;
@@ -61,10 +62,11 @@ impl ComponentExpressionHandler<UiIfElse, ()> for UiIfElseExpressionHandler {
         &mut self,
         c: &mut UiIfElse,
         state: &T,
+        engine: &ExpressionEngine<T>,
         _added_data: (),
     ) {
         info!("Checking for change...");
-        if let Some(nv) = self.internal_conditional_update(state, c.current_condition) {
+        if let Some(nv) = self.internal_conditional_update(state, c.current_condition, engine) {
             info!("If Else Value Updated to {nv:?}");
             c.current_condition = nv;
         } else {
@@ -81,6 +83,7 @@ pub fn ui_if_else_changed<T: UIState>(
     handle: Option<Res<UiHandle<T>>>,
     asset_server: Res<AssetServer>,
     parents: Query<&Children, With<Node>>,
+    engine: Res<ExpressionEngine<T>>,
 ) {
     if if_else_query.is_empty() {
         return;
@@ -134,6 +137,7 @@ pub fn ui_if_else_changed<T: UIState>(
                         &asset_server,
                         tree,
                         if_else.data_root,
+                        &engine,
                     ))
                 } else {
                     None
@@ -151,6 +155,7 @@ pub fn ui_if_else_changed<T: UIState>(
                 &asset_server,
                 tree,
                 if_else.data_root,
+                &engine,
             );
         }
     }

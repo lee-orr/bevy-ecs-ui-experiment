@@ -16,7 +16,7 @@ fn main() {
         .run();
 }
 
-#[derive(Component, Reflect, Debug)]
+#[derive(Component, Reflect, Clone, Debug)]
 pub struct MyUi {
     content: Vec<String>,
 }

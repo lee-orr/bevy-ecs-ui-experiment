@@ -15,8 +15,7 @@ fn main() {
         .add_plugin(WorldInspectorPlugin::default())
         .run();
 }
-
-#[derive(Component, Reflect, Debug)]
+#[derive(Component, Reflect, Clone, Debug)]
 pub struct MyUi {
     test: String,
 }

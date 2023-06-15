@@ -1,4 +1,5 @@
 use crate::ui_plugin::UiHandle;
+use crate::ExpressionEngine;
 
 use crate::ui_asset::UiNodeTree;
 
@@ -57,6 +58,7 @@ impl ComponentExpressionHandler<UiFor, ()> for UiForExpressionHandler {
         &mut self,
         _c: &mut UiFor,
         _state: &T,
+        _engine: &ExpressionEngine<T>,
         _added_data: (),
     ) {
         todo!()
