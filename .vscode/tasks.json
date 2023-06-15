@@ -19,6 +19,14 @@
 		},
 		{
 			"type": "shell",
+			"command": "cargo run --example for_expressions",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"label": "For"
+		},
+		{
+			"type": "shell",
 			"command": "cargo run --example if_expressions",
 			"problemMatcher": [
 				"$rustc"
