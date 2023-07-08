@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use bevy::prelude::*;
-use bevy_ecss::{Class, StyleSheet, StyleSheetAsset};
+use tomt_bevycss::prelude::{Class, StyleSheet, StyleSheetAsset};
 
 use crate::{
     expression::Expression,

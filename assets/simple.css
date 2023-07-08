@@ -7,10 +7,10 @@
     align-items: center;
 }
 
-text {
-    color: green;
+#test text {
+    color: purple;
     font: "libre-baskerville/LibreBaskerville-Regular.ttf";
-    font-size: 15;
+    font-size: 25;
 }
 
 .img_class {
@@ -24,14 +24,14 @@ text {
     font: "libre-baskerville/LibreBaskerville-Bold.ttf";
 }
 
-text#text.text_class {
+.class1.class2 .text_class {
     font: "libre-baskerville/LibreBaskerville-Regular.ttf";
     font-size: 30;
     color: blue;
 }
 
 .class1.class2 {
-    background-color: white;
+    background-color: pink;
     padding: 35px;
     flex-direction: column;
 }

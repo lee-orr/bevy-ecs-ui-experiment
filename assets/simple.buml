@@ -1,4 +1,5 @@
 <node name="test">
+    <txt>what?</txt>
     <node class="class1 class2">
         <img class="img_class" name="image" src="test-image.png"/>
                 WHAT IS UP MAN

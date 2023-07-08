@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use bevy::{ecs::system::EntityCommands, prelude::*, text::Text, ui::UiImage};
-use bevy_ecss::Class;
+use tomt_bevycss::prelude::Class;
 
 use crate::{
     logical_nodes::LogicalNodesPlugin, string_expression::StringExpression, Expression,
