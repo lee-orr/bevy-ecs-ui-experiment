@@ -15,7 +15,7 @@ use crate::reactive_expression_handlers::ReactiveExpressionHandler;
 
 use bevy::prelude::*;
 
-use crate::ArrayExpression;
+use crate::ExpressionArray;
 
 use crate::reactive_expression_handlers::GetExpressionHandlers;
 
@@ -29,12 +29,12 @@ pub struct UiIfElse {
     pub ui_child: (Option<usize>, Entity),
 }
 
-impl GetExpressionHandlers<UiIfElse, ArrayExpression> for UiIfElse {
+impl GetExpressionHandlers<UiIfElse, ExpressionArray> for UiIfElse {
     fn setup_expression_handlers(
         &self,
         root: &mut bevy::ecs::system::EntityCommands,
         target: Entity,
-        e: ArrayExpression,
+        e: ExpressionArray,
     ) {
         let reactive_handler = UiIfElseExpressionHandler::new(target, &e, &());
         root.with_children(|p| {
@@ -51,7 +51,7 @@ impl GetExpressionHandlers<UiIfElse, ArrayExpression> for UiIfElse {
 }
 
 pub type UiIfElseExpressionHandler =
-    ReactiveExpressionHandler<Option<usize>, ArrayExpression, UiIfElse, 0, ()>;
+    ReactiveExpressionHandler<Option<usize>, ExpressionArray, UiIfElse, 0, ()>;
 
 impl ComponentExpressionHandler<UiIfElse, ()> for UiIfElseExpressionHandler {
     fn get_source_entity(&self) -> Entity {

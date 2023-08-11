@@ -3,7 +3,9 @@ use bevy::{
     reflect::{GetPath, TypeUuid},
 };
 
-use rhai::{Engine, EvalAltResult, Position};
+use std::sync::Arc;
+
+use rhai::{Dynamic, Engine, EvalAltResult, Position, Shared};
 use serde::{de, Deserialize, Deserializer, Serialize};
 
 use crate::{ExpressionValue, UIState};
@@ -110,9 +112,9 @@ pub trait Expression<Val>: Send + Sync + Clone {
 pub struct SimpleExpression(pub RawExpression);
 
 #[derive(Debug, Clone)]
-pub struct ArrayExpression(pub Vec<SimpleExpression>);
+pub struct ExpressionArray(pub Vec<SimpleExpression>);
 
-impl Expression<Option<usize>> for ArrayExpression {
+impl Expression<Option<usize>> for ExpressionArray {
     fn process<T: UIState>(&self, context: &T, engine: &ExpressionEngine<T>) -> Option<usize> {
         info!("Processing Array Expression {self:?}");
         for (id, exp) in self.0.iter().enumerate() {
@@ -249,6 +251,18 @@ impl Expression<f64> for SimpleExpression {
         {
             Ok(Ok(v)) => v,
             _ => 0.,
+        }
+    }
+}
+
+impl<V: PartialEq + Clone> Expression<Arc<[V]>> for SimpleExpression {
+    fn process<T: UIState>(&self, context: &T, engine: &ExpressionEngine<T>) -> Arc<[V]> {
+        match engine
+            .process_expression(context, &self.0)
+            .filter_map(|v| v.into_typed_array::<V>().ok())
+        {
+            Ok(value) => value,
+            Err(_) => vec![],
         }
     }
 }

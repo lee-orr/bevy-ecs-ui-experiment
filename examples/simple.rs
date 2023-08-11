@@ -1,7 +1,5 @@
 use bevy::prelude::*;
 use bevy_ecs_ui_experiment::*;
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
-
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(AssetPlugin {
@@ -12,7 +10,6 @@ fn main() {
         .add_plugin(UiPlugin::<MyUi>::new().initialize("simple.buml", "simple.css"))
         .add_startup_system(setup)
         .add_system(adjust_style)
-        .add_plugin(WorldInspectorPlugin::default())
         .run();
 }
 

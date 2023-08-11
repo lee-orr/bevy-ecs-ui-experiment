@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.10", default-features = false, features = ["bevy_ui", "bevy_text", "bevy_render", "bevy_asset"]}
-tomt_bevycss = "0.4.2"
-bevy_common_assets = { version = "0.6", features = ["xml"]}
+bevy = { version = "0.11", default-features = false, features = ["bevy_ui", "bevy_text", "bevy_render", "bevy_asset"]}
+tomt_bevycss = { git = "https://github.com/TheBeardedQuack/tomt_bevycss", rev = "4ef9675e8cdf42f3d41e87b79ad7bb7966cad6e7" }
+bevy_common_assets = { version = "0.7", features = ["xml"]}
 serde = { version = "1", features = ["derive"]}
 tuple_utils = "*"
 quick-xml = { version = "0.29", features = ["serialize"]}
@@ -16,5 +16,4 @@ rhai = { version = "1.14", features = ["sync", "serde"]}
 
 [dev-dependencies]
 
-bevy = { version = "0.10", default-features = true}
-bevy-inspector-egui = "*"
+bevy = { version = "0.11", default-features = true}

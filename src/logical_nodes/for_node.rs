@@ -1,5 +1,6 @@
 use crate::ui_plugin::UiHandle;
 use crate::ExpressionEngine;
+use crate::SimpleExpression;
 
 use crate::ui_asset::UiNodeTree;
 
@@ -10,27 +11,25 @@ use crate::reactive_expression_handlers::ComponentExpressionHandler;
 use crate::reactive_expression_handlers::ReactiveExpressionHandler;
 
 use bevy::prelude::*;
+use rhai::Dynamic;
 
-use crate::ArrayExpression;
+use crate::ExpressionArray;
 
 use crate::reactive_expression_handlers::GetExpressionHandlers;
 
 #[derive(Component)]
 pub struct UiFor {
-    pub current_condition: Option<usize>,
-    pub num_conditions: usize,
-    pub child_options: Vec<usize>,
     pub data_root: Entity,
     pub ui_parent: Entity,
-    pub ui_child: (Option<usize>, Entity),
+    pub ui_children: Vec<(Option<usize>, Entity)>,
 }
 
-impl GetExpressionHandlers<UiFor, ArrayExpression> for UiFor {
+impl GetExpressionHandlers<UiFor, ExpressionArray> for UiFor {
     fn setup_expression_handlers(
         &self,
         root: &mut bevy::ecs::system::EntityCommands,
         target: Entity,
-        e: ArrayExpression,
+        e: ExpressionArray,
     ) {
         let reactive_handler = UiForExpressionHandler::new(target, &e, &());
         root.with_children(|p| {
@@ -46,8 +45,7 @@ impl GetExpressionHandlers<UiFor, ArrayExpression> for UiFor {
     }
 }
 
-pub type UiForExpressionHandler =
-    ReactiveExpressionHandler<Option<usize>, ArrayExpression, UiFor, 0, ()>;
+pub type UiForExpressionHandler = ReactiveExpressionHandler<bool, SimpleExpression, UiFor, 0, ()>;
 
 impl ComponentExpressionHandler<UiFor, ()> for UiForExpressionHandler {
     fn get_source_entity(&self) -> Entity {

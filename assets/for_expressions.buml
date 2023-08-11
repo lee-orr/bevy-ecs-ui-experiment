@@ -1,6 +1,6 @@
 <node name="test">
     <node name="container" class="class1 class2">
-        <for collection="content" key="value()">
+        <for collection="content">
             <txt>Text: {value()}</txt>
         </for>
     </node>

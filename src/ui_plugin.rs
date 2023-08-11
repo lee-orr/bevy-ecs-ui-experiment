@@ -11,7 +11,7 @@ use crate::{
     },
     string_expression::StringExpression,
     ui_asset::{IfElse, Image, Node, Text, UiNodeTree},
-    ArrayExpression, ExpressionEngine, UiNode,
+    ExpressionArray, ExpressionEngine, UiNode,
 };
 
 pub struct UiPlugin<T: UIState>(PhantomData<T>, Option<(String, String)>);
@@ -208,7 +208,7 @@ pub fn spawn_ui<T: UIState>(
                 id = p.spawn_empty().id();
             });
 
-            let condition_expression = ArrayExpression(
+            let condition_expression = ExpressionArray(
                 conditions
                     .iter()
                     .filter_map(|(expression, _)| expression.clone())
