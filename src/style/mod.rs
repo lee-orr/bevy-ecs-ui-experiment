@@ -1,6 +1,6 @@
-pub mod background_color;
-pub mod node;
-pub mod text;
+mod background_color;
+mod node;
+mod text;
 
 pub use background_color::*;
 pub use node::*;

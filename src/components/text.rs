@@ -30,16 +30,16 @@ impl Clone for UiTextBundle {
     fn clone(&self) -> Self {
         Self {
             node_bundle: TextBundle {
-                node: self.node_bundle.node.clone(),
+                node: self.node_bundle.node,
                 style: self.node_bundle.style.clone(),
                 calculated_size: Default::default(),
-                background_color: self.node_bundle.background_color.clone(),
-                focus_policy: self.node_bundle.focus_policy.clone(),
-                transform: self.node_bundle.transform.clone(),
-                global_transform: self.node_bundle.global_transform.clone(),
-                visibility: self.node_bundle.visibility.clone(),
+                background_color: self.node_bundle.background_color,
+                focus_policy: self.node_bundle.focus_policy,
+                transform: self.node_bundle.transform,
+                global_transform: self.node_bundle.global_transform,
+                visibility: self.node_bundle.visibility,
                 computed_visibility: self.node_bundle.computed_visibility.clone(),
-                z_index: self.node_bundle.z_index.clone(),
+                z_index: self.node_bundle.z_index,
                 text: self.node_bundle.text.clone(),
                 text_layout_info: self.node_bundle.text_layout_info.clone(),
                 text_flags: self.node_bundle.text_flags.clone(),

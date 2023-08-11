@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use bevy::prelude::{Component, Query, With};
-use bevy::reflect::{FromReflect, Reflect};
+use bevy::reflect::Reflect;
 
 #[derive(Component, Debug, Clone, Copy, Reflect)]
 pub struct UiId<T: Debug + PartialEq + Eq + Hash + Sync + Send + Clone + Copy>(T);

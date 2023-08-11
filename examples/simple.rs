@@ -4,11 +4,11 @@ use bevy_ecs_ui_experiment::{ui_id::UiId, *};
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(EcsUiPlugin)
+        .add_plugins(EcsUiPlugin)
         // .add_plugin(WorldInspectorPlugin::new())
         .register_type::<UiId<i32>>()
-        .add_startup_system(setup)
-        .add_system(adjust_style)
+        .add_systems(Startup, setup)
+        .add_systems(PostUpdate, adjust_style)
         .run();
 }
 
