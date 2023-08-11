@@ -56,7 +56,8 @@ fn setup(mut commands: Commands, assets: ResMut<AssetServer>) {
         .node()
         .style(UiStyler::Base(font.clone()))
         .bg(Color::rgb(1., 0.5, 0.2))
-        .size(Size::all(Val::Px(400.)))
+        .width(Val::Px(400.))
+        .height(Val::Px(400.))
         .flex_direction(FlexDirection::Column)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::SpaceBetween)
@@ -68,7 +69,10 @@ fn setup(mut commands: Commands, assets: ResMut<AssetServer>) {
                 });
             p.text("A IS NOT PRESSED").id(15);
             p.text("I don't change...").id(16);
-            p.image(image).size(Size::all(Val::Px(150.))).id(16);
+            p.image(image)
+                .width(Val::Px(150.))
+                .height(Val::Px(150.))
+                .id(16);
         });
 }
 

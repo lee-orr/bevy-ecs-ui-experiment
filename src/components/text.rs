@@ -20,10 +20,33 @@ pub type TextQuery<'w, 's, 'a, T> = UIQuery<'w, 's, 'a, T, TextComponents<'a>, T
 #[derive(Component, Clone, Default)]
 pub struct TextNode;
 
-#[derive(Bundle, Clone, Default)]
+#[derive(Bundle, Default)]
 pub struct UiTextBundle {
     pub node_bundle: TextBundle,
     pub marker: TextNode,
+}
+
+impl Clone for UiTextBundle {
+    fn clone(&self) -> Self {
+        Self {
+            node_bundle: TextBundle {
+                node: self.node_bundle.node.clone(),
+                style: self.node_bundle.style.clone(),
+                calculated_size: Default::default(),
+                background_color: self.node_bundle.background_color.clone(),
+                focus_policy: self.node_bundle.focus_policy.clone(),
+                transform: self.node_bundle.transform.clone(),
+                global_transform: self.node_bundle.global_transform.clone(),
+                visibility: self.node_bundle.visibility.clone(),
+                computed_visibility: self.node_bundle.computed_visibility.clone(),
+                z_index: self.node_bundle.z_index.clone(),
+                text: self.node_bundle.text.clone(),
+                text_layout_info: self.node_bundle.text_layout_info.clone(),
+                text_flags: self.node_bundle.text_flags.clone(),
+            },
+            marker: self.marker.clone(),
+        }
+    }
 }
 
 impl StyleComponentApplier<BackgroundColor> for UiTextBundle {
