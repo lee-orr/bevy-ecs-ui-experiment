@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_ecs_ui_experiment::{ui_id::UiId, *};
+use ui_experiment::{ui_id::UiId, *};
 
 fn main() {
     App::new()
