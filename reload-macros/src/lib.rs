@@ -1,20 +1,10 @@
 extern crate proc_macro;
 
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
-};
-
 use proc_macro::TokenStream;
-use proc_macro2::*;
-use proc_macro_crate::{crate_name, FoundCrate};
-use syn::{parse_macro_input, FnArg, ItemFn};
-
-use quote::{quote, ToTokens};
 
 #[proc_macro_attribute]
 pub fn ui_systems(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    return item;
+    item
 
     // let ast = parse_macro_input!(item as ItemFn);
 

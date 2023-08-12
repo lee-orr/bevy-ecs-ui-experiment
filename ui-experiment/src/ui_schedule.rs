@@ -1,7 +1,4 @@
-use bevy::{
-    ecs::schedule::ScheduleLabel,
-    prelude::{IntoSystemConfigs, Schedule},
-};
+use bevy::ecs::schedule::ScheduleLabel;
 
 #[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ReloadUi;

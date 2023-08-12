@@ -16,5 +16,5 @@ pub use ui_schedule::*;
 pub struct EcsUiPlugin;
 
 impl Plugin for EcsUiPlugin {
-    fn build(&self, app: &mut App) {}
+    fn build(&self, _app: &mut App) {}
 }
