@@ -1,10 +1,32 @@
 extern crate proc_macro;
+extern crate quote;
 
 use proc_macro::TokenStream;
+use quote::quote;
+use syn::{parse_macro_input, ItemFn};
 
 #[proc_macro_attribute]
-pub fn ui_systems(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    item
+pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let ast = parse_macro_input!(item as ItemFn);
+
+    let fn_name = &ast.sig.ident;
+
+    quote! {
+
+        #[no_mangle]
+        fn internal_hot_reload_setup(app: &mut App) {
+            #ast
+
+            #fn_name(app);
+        }
+
+        fn main() {
+            hot_reload::run_reloadabe_app();
+        }
+    }
+    .into()
+
+    // item
 
     // let ast = parse_macro_input!(item as ItemFn);
 

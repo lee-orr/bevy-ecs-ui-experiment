@@ -11,6 +11,14 @@
 		},
 		{
 			"type": "shell",
+			"command": "cargo run -p hot-reload --example simple",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"label": "Simple Hot Reload"
+		},
+		{
+			"type": "shell",
 			"command": "cargo clippy --fix --allow-dirty && cargo fmt",
 			"label": "Clippy & Fmt"
 		}
