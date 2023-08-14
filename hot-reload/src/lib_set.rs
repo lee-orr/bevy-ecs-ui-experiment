@@ -63,7 +63,7 @@ impl LibPathSet {
             std::env::current_exe()
                 .ok()
                 .and_then(|v| v.file_stem().map(|v| v.to_string_lossy().to_string()))
-                .map(|v| format!("lib_{v:?}"))?
+                .map(|v| format!("lib_{v}"))?
         });
 
         #[cfg(unix)]

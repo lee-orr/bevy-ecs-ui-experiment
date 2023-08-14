@@ -1,12 +1,15 @@
-use bevy::prelude::*;
+use std::time::Duration;
+
+use bevy::{app::ScheduleRunnerPlugin, prelude::*};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use hot_reload::{reload_macros::hot_bevy_main, *};
 
 #[hot_bevy_main]
 pub fn bevy_main(app: &mut App) {
-    app.add_plugins(DefaultPlugins.setup_for_hot_reload())
-        .add_plugins(WorldInspectorPlugin::new())
-        .add_systems(Startup, setup);
+    println!("Creating app");
+    app.add_systems(Update, print_update);
+    // .add_plugins(WorldInspectorPlugin::new())
+    // .add_systems(Startup, setup);
 }
 
 fn setup(
@@ -42,4 +45,8 @@ fn setup(
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
     });
+}
+
+fn print_update() {
+    println!("UPDATING STUFF");
 }

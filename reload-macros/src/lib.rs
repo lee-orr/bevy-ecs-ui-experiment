@@ -17,7 +17,7 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
         #[cfg(not(feature = "bypass"))]
         #[no_mangle]
-        pub fn internal_hot_Reload_setup(app: &mut bevy::prelude::App) {
+        pub fn internal_hot_reload_setup(app: &mut bevy::prelude::App) {
             #fn_name(app);
         }
     }
@@ -25,9 +25,10 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
+#[allow(unused_variables)]
 pub fn hot_bevy(input: TokenStream) -> TokenStream {
     let attrs = parse_macro_input!(input as Expr);
-    let (_function, options) = match &attrs {
+    let (function, options) = match &attrs {
         Expr::Path(path) => (path, None),
         Expr::Tuple(tuple) => {
             let function = tuple

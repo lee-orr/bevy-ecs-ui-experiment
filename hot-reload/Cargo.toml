@@ -12,3 +12,4 @@ bypass = ["reload-macros/bypass"]
 bevy = { version = "0.11", default-features = false, features = ["bevy_winit"] }
 libloading = "0.8"
 reload-macros = { path = "../reload-macros" }
+oneshot = "0.1"

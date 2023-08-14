@@ -2,6 +2,8 @@ mod lib_set;
 mod types;
 use std::fs::metadata;
 
+use std::sync::mpsc::{self, channel};
+use std::thread;
 use std::time::Duration;
 
 use bevy::a11y::{AccessibilityRequested, Focus};
@@ -9,7 +11,7 @@ use bevy::a11y::{AccessibilityRequested, Focus};
 use bevy::ecs::prelude::*;
 use bevy::input::InputPlugin;
 use bevy::log::LogPlugin;
-use bevy::prelude::PreUpdate;
+use bevy::prelude::{App, Main, PostUpdate, PreUpdate, Update};
 use bevy::utils::Instant;
 use bevy::window::WindowPlugin;
 use bevy::winit::WinitPlugin;
@@ -46,7 +48,6 @@ fn update_lib(
 
     // copy over and load lib if it has been updated, or hasn't been initially
     if lib_file_path.is_file() {
-        bevy::log::info!("Found Lib");
         if hot_in_use_file_path.is_file() {
             let hot_lib_meta = metadata(&hot_in_use_file_path).unwrap();
             let main_lib_meta = metadata(&lib_file_path).unwrap();
@@ -61,6 +62,7 @@ fn update_lib(
             std::fs::copy(lib_file_path, &hot_in_use_file_path).unwrap();
         }
         if hot_reload_int.library.is_none() {
+            bevy::log::info!("No library set");
             unsafe {
                 let lib = libloading::Library::new(&hot_in_use_file_path).unwrap_or_else(|_| {
                     panic!(
@@ -98,6 +100,8 @@ pub fn run_reloadabe_app(options: Option<HotReloadOptions>) {
     let library_paths = LibPathSet::new(options.unwrap_or_default()).unwrap();
     println!("Paths: {library_paths:?}");
 
+    let _ = std::fs::remove_file(library_paths.lib_file_path());
+
     let build_cmd = format!(
         "build --lib --target-dir {} --features bevy/dynamic_linking",
         library_paths.folder.parent().unwrap().to_string_lossy()
@@ -120,9 +124,14 @@ pub fn run_reloadabe_app(options: Option<HotReloadOptions>) {
 
     let mut app = bevy::app::App::new();
 
+    let (sender, receiver) = channel();
+
     app.init_resource::<AccessibilityRequested>()
         .init_resource::<Focus>()
         .init_resource::<HotReload>()
+        .init_non_send_resource::<ReloadedApp>()
+        .insert_non_send_resource(AppReloadReceiver(receiver))
+        .insert_resource(AppReloadChannel(sender))
         .add_plugins((
             MinimalPlugins,
             WindowPlugin::default(),
@@ -139,7 +148,65 @@ pub fn run_reloadabe_app(options: Option<HotReloadOptions>) {
             last_update_time: Instant::now().checked_sub(Duration::from_secs(1)).unwrap(),
             library_paths,
         })
-        .add_systems(PreUpdate, update_lib);
+        .add_systems(PreUpdate, update_lib)
+        .add_systems(Update, (setup_app, reload_app).chain())
+        .add_systems(PostUpdate, run_app);
 
     app.run()
+}
+
+struct ReloadApp(App);
+
+#[derive(Default)]
+struct ReloadedApp(Option<App>);
+
+#[derive(Resource)]
+struct AppReloadChannel(mpsc::Sender<ReloadApp>);
+
+struct AppReloadReceiver(mpsc::Receiver<ReloadApp>);
+
+fn setup_app(
+    mut reloadable: NonSendMut<ReloadedApp>,
+    reload_channel: Res<AppReloadChannel>,
+    internal_state: Res<InternalHotReload>,
+) {
+    if !internal_state.updated_this_frame {
+        return;
+    }
+    let Some(lib) = &internal_state.library else {
+        return;
+    };
+
+    reloadable.0 = None;
+
+    let channel = reload_channel.0.clone();
+
+    let mut app = App::new();
+
+    app.set_runner(move |app| {
+        let _ = channel.send(ReloadApp(app));
+    });
+
+    unsafe {
+        let func: libloading::Symbol<unsafe extern "C" fn(&mut App)> = lib
+            .get("internal_hot_reload_setup".as_bytes())
+            .unwrap_or_else(|_| panic!("Can't find a function tagged with hot_bevy_main",));
+        func(&mut app);
+    }
+
+    app.run();
+}
+
+fn reload_app(mut reloadable: NonSendMut<ReloadedApp>, reload_channel: NonSend<AppReloadReceiver>) {
+    let Ok(app) = reload_channel.0.try_recv() else {
+        return;
+    };
+    reloadable.0 = Some(app.0);
+}
+
+fn run_app(mut reloadable: NonSendMut<ReloadedApp>) {
+    let Some(app) = &mut reloadable.0 else {
+        return;
+    };
+    app.update();
 }
