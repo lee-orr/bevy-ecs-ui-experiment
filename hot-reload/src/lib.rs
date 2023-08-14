@@ -124,14 +124,10 @@ pub fn run_reloadabe_app(options: Option<HotReloadOptions>) {
 
     let mut app = bevy::app::App::new();
 
-    let (sender, receiver) = channel();
-
     app.init_resource::<AccessibilityRequested>()
         .init_resource::<Focus>()
         .init_resource::<HotReload>()
         .init_non_send_resource::<ReloadedApp>()
-        .insert_non_send_resource(AppReloadReceiver(receiver))
-        .insert_resource(AppReloadChannel(sender))
         .add_plugins((
             MinimalPlugins,
             WindowPlugin::default(),
@@ -148,28 +144,16 @@ pub fn run_reloadabe_app(options: Option<HotReloadOptions>) {
             last_update_time: Instant::now().checked_sub(Duration::from_secs(1)).unwrap(),
             library_paths,
         })
-        .add_systems(PreUpdate, update_lib)
-        .add_systems(Update, (setup_app, reload_app).chain())
-        .add_systems(PostUpdate, run_app);
+        .add_systems(PreUpdate, (update_lib, setup_app).chain())
+        .add_systems(Update, run_app);
 
     app.run()
 }
 
-struct ReloadApp(App);
-
 #[derive(Default)]
-struct ReloadedApp(Option<App>);
+struct ReloadedApp(Option<Box<App>>);
 
-#[derive(Resource)]
-struct AppReloadChannel(mpsc::Sender<ReloadApp>);
-
-struct AppReloadReceiver(mpsc::Receiver<ReloadApp>);
-
-fn setup_app(
-    mut reloadable: NonSendMut<ReloadedApp>,
-    reload_channel: Res<AppReloadChannel>,
-    internal_state: Res<InternalHotReload>,
-) {
+fn setup_app(mut reloadable: NonSendMut<ReloadedApp>, internal_state: Res<InternalHotReload>) {
     if !internal_state.updated_this_frame {
         return;
     }
@@ -179,34 +163,27 @@ fn setup_app(
 
     reloadable.0 = None;
 
-    let channel = reload_channel.0.clone();
-
-    let mut app = App::new();
-
-    app.set_runner(move |app| {
-        let _ = channel.send(ReloadApp(app));
-    });
-
-    unsafe {
-        let func: libloading::Symbol<unsafe extern "C" fn(&mut App)> = lib
+    let app = unsafe {
+        let func: libloading::Symbol<unsafe extern "C" fn() -> Option<Box<App>>> = lib
             .get("internal_hot_reload_setup".as_bytes())
             .unwrap_or_else(|_| panic!("Can't find a function tagged with hot_bevy_main",));
-        func(&mut app);
-    }
+        func()
+    };
 
-    app.run();
+    reloadable.0 = app;
 }
 
-fn reload_app(mut reloadable: NonSendMut<ReloadedApp>, reload_channel: NonSend<AppReloadReceiver>) {
-    let Ok(app) = reload_channel.0.try_recv() else {
+fn run_app(mut reloadable: NonSendMut<ReloadedApp>, internal_state: Res<InternalHotReload>) {
+    let Some(app) = reloadable.0.as_mut() else {
         return;
     };
-    reloadable.0 = Some(app.0);
-}
-
-fn run_app(mut reloadable: NonSendMut<ReloadedApp>) {
-    let Some(app) = &mut reloadable.0 else {
+    let Some(lib) = &internal_state.library else {
         return;
     };
-    app.update();
+    unsafe {
+        let func: libloading::Symbol<unsafe extern "C" fn(&mut Box<App>)> = lib
+            .get("internal_trigger_update".as_bytes())
+            .unwrap_or_else(|_| panic!("Can't find a function tagged with hot_bevy_main",));
+        func(app);
+    };
 }

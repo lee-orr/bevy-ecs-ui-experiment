@@ -5,11 +5,14 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use hot_reload::{reload_macros::hot_bevy_main, *};
 
 #[hot_bevy_main]
-pub fn bevy_main(app: &mut App) {
+pub fn bevy_main() -> App {
     println!("Creating app");
-    app.add_systems(Update, print_update);
-    // .add_plugins(WorldInspectorPlugin::new())
-    // .add_systems(Startup, setup);
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins.setup_for_hot_reload())
+        .add_plugins(WorldInspectorPlugin::new())
+        .add_systems(Startup, setup);
+
+    app
 }
 
 fn setup(

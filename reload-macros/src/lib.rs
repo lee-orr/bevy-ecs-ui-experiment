@@ -17,8 +17,25 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
         #[cfg(not(feature = "bypass"))]
         #[no_mangle]
-        pub fn internal_hot_reload_setup(app: &mut bevy::prelude::App) {
-            #fn_name(app);
+        pub fn internal_hot_reload_setup() -> Option<Box<App>> {
+            let mut app = #fn_name();
+
+            let (sn, rc) = app_grabber();
+
+            app.set_runner(move |app| {
+                sn.send(app);
+            });
+
+            app.run();
+
+            rc.recv().map(Box::new).ok()
+        }
+
+
+        #[cfg(not(feature = "bypass"))]
+        #[no_mangle]
+        pub fn internal_trigger_update(app: &mut Box<App>) {
+            app.update();
         }
     }
     .into()
@@ -65,8 +82,7 @@ pub fn hot_bevy(input: TokenStream) -> TokenStream {
     {
         quote! {
             println!("bypassing hot reload");
-            let mut app = bevy::prelude::App::new();
-            #function(&mut app);
+            let mut app = #function();
             app.run()
         }
         .into()

@@ -9,7 +9,10 @@ bypass = ["reload-macros/bypass"]
 
 
 [dependencies]
-bevy = { version = "0.11", default-features = false, features = ["bevy_winit"] }
+bevy = { version = "0.11", default-features = false, features = [
+    "bevy_winit",
+    "serialize",
+] }
 libloading = "0.8"
 reload-macros = { path = "../reload-macros" }
 oneshot = "0.1"
