@@ -58,7 +58,7 @@ pub fn app_grabber() -> (oneshot::Sender<App>, oneshot::Receiver<App>) {
 }
 
 #[derive(SystemParam)]
-struct WindowAndInputEventWriters<'w> {
+pub struct WindowAndInputEventWriters<'w> {
     // `winit` `WindowEvent`s
     window_resized: EventWriter<'w, WindowResized>,
     window_close_requested: EventWriter<'w, WindowCloseRequested>,
@@ -85,7 +85,7 @@ struct WindowAndInputEventWriters<'w> {
 }
 
 #[derive(SystemParam)]
-struct WindowAndInputEventReaders<'w, 's> {
+pub struct WindowAndInputEventReaders<'w, 's> {
     // `winit` `WindowEvent`s
     window_resized: EventReader<'w, 's, WindowResized>,
     window_close_requested: EventReader<'w, 's, WindowCloseRequested>,

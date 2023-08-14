@@ -173,7 +173,11 @@ fn setup_app(mut reloadable: NonSendMut<ReloadedApp>, internal_state: Res<Intern
     reloadable.0 = app;
 }
 
-fn run_app(mut reloadable: NonSendMut<ReloadedApp>, internal_state: Res<InternalHotReload>) {
+fn run_app(
+    mut reloadable: NonSendMut<ReloadedApp>,
+    internal_state: Res<InternalHotReload>,
+    mut readers: WindowAndInputEventReaders,
+) {
     let Some(app) = reloadable.0.as_mut() else {
         return;
     };
@@ -181,9 +185,11 @@ fn run_app(mut reloadable: NonSendMut<ReloadedApp>, internal_state: Res<Internal
         return;
     };
     unsafe {
-        let func: libloading::Symbol<unsafe extern "C" fn(&mut Box<App>)> = lib
+        let func: libloading::Symbol<
+            unsafe extern "C" fn(&mut Box<App>, &mut WindowAndInputEventReaders),
+        > = lib
             .get("internal_trigger_update".as_bytes())
             .unwrap_or_else(|_| panic!("Can't find a function tagged with hot_bevy_main",));
-        func(app);
+        func(app, &mut readers);
     };
 }

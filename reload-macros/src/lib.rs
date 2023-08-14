@@ -34,7 +34,7 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
         #[cfg(not(feature = "bypass"))]
         #[no_mangle]
-        pub fn internal_trigger_update(app: &mut Box<App>) {
+        pub fn internal_trigger_update(app: &mut Box<App>, readers: &mut hot_reload::WindowAndInputEventReaders) {
             app.update();
         }
     }
