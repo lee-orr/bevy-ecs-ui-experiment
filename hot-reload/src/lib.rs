@@ -22,19 +22,19 @@ use lib_set::*;
 use libloading::Library;
 pub use types::*;
 
-/// Only for HotReload internal use. Must be pub because it is
-/// inserted as an arg on systems with #[make_hot]
 #[derive(Resource)]
-struct HotReloadLibInternalUseOnly {
+struct InternalHotReload {
     pub library: Option<Library>,
     pub updated_this_frame: bool,
     pub last_update_time: Instant,
-    pub cargo_watch_child: ChildGuard,
     pub library_paths: LibPathSet,
+
+    #[allow(dead_code)]
+    pub cargo_watch_child: ChildGuard,
 }
 
 fn update_lib(
-    mut hot_reload_int: ResMut<HotReloadLibInternalUseOnly>,
+    mut hot_reload_int: ResMut<InternalHotReload>,
     mut hot_reload: ResMut<HotReload>,
     mut event: EventWriter<HotReloadEvent>,
 ) {
@@ -131,7 +131,7 @@ pub fn run_reloadabe_app(options: Option<HotReloadOptions>) {
             LogPlugin::default(),
         ))
         .add_event::<HotReloadEvent>()
-        .insert_resource(HotReloadLibInternalUseOnly {
+        .insert_resource(InternalHotReload {
             cargo_watch_child: child,
             library: None,
             updated_this_frame: false,

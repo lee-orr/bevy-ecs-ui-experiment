@@ -1,2 +1,3 @@
 [workspace]
-members = ["ui-experiment", "reload-macros", "hot-reload"]
+resolver = "2"
+members = ["ui-experiment", "reload-macros", "hot-reload", "hot_reload_example"]

@@ -11,7 +11,7 @@
 		},
 		{
 			"type": "shell",
-			"command": "cargo run -p hot-reload --example simple",
+			"command": "cargo run -p hot_reload_example",
 			"problemMatcher": [
 				"$rustc"
 			],

@@ -1,11 +1,10 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use hot_reload::*;
-use reload_macros::hot_bevy_main;
+use hot_reload::{reload_macros::hot_bevy_main, *};
 
 #[hot_bevy_main]
-fn bevy_main(mut app: &mut App) {
-    app.add_plugins(DefaultPlugins.remove_winit())
+pub fn bevy_main(app: &mut App) {
+    app.add_plugins(DefaultPlugins.setup_for_hot_reload())
         .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, setup);
 }
