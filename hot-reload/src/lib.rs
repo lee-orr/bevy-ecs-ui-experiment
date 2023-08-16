@@ -176,6 +176,7 @@ impl Plugin for HotReloadPlugin {
             .add_schedule(SetupReload, reload_schedule)
             .add_schedule(CleanupReloaded, cleanup_schedule)
             .init_resource::<HotReload>()
+            .init_resource::<ReloadableApp>()
             .init_resource::<ReloadableAppInner>()
             .add_event::<HotReloadEvent>()
             .insert_resource(InternalHotReload {
@@ -185,7 +186,8 @@ impl Plugin for HotReloadPlugin {
                 libs: self.0.clone(),
             })
             .add_systems(PreStartup, reload)
-            .add_systems(PreUpdate, (update_lib_system, cleanup, reload).chain());
+            .add_systems(CleanupReloaded, cleanup)
+            .add_systems(PreUpdate, (update_lib_system, reload).chain());
         println!("Finished build");
     }
 }
@@ -206,23 +208,27 @@ fn setup_reloadable_app<T: ReloadableSetup>(name: &'static [u8], world: &mut Wor
     let Some(internal_state) = world.get_resource::<InternalHotReload>() else {
         return;
     };
-    if !internal_state.updated_this_frame {
-        return;
-    }
 
     let Some(lib) = &internal_state.library else {
-        let mut reloadable = ReloadableApp::new(world);
+        let Some(mut reloadable) = world.get_resource_mut::<ReloadableApp>() else {
+            return;
+        };
+
         T::default_function(&mut reloadable);
         return;
     };
     let lib = lib.clone();
     let Some(lib) = lib.library() else {
-        let mut reloadable = ReloadableApp::new(world);
+        let Some(mut reloadable) = world.get_resource_mut::<ReloadableApp>() else {
+            return;
+        };
         T::default_function(&mut reloadable);
         return;
     };
-    let mut reloadable = ReloadableApp::new(world);
 
+    let Some(mut reloadable) = world.get_resource_mut::<ReloadableApp>() else {
+        return;
+    };
     unsafe {
         let func: libloading::Symbol<unsafe extern "C" fn(&mut ReloadableApp)> = lib
             .get(name)
@@ -231,16 +237,60 @@ fn setup_reloadable_app<T: ReloadableSetup>(name: &'static [u8], world: &mut Wor
     };
 }
 
-fn cleanup(mut schedules: ResMut<Schedules>, inner: Res<ReloadableAppInner>) {
-    for schedule in inner.labels.iter() {
+fn register_schedules(world: &mut World) {
+    println!("Reloading schedules");
+    let Some(reloadable) = world.remove_resource::<ReloadableApp>() else {
+        return;
+    };
+    println!("Has reloadable app");
+
+    let Some(mut schedules) = world.get_resource_mut::<Schedules>() else {
+        return;
+    };
+
+    println!("Has schedules resource");
+
+    let mut inner = ReloadableAppInner::default();
+
+    for (original, schedule) in reloadable.into_iter() {
+        let label = ReloadableSchedule::new(original.clone());
+        println!("Adding {label:?} to schedule");
+        inner.labels.insert(Box::new(label.clone()));
+        let exists = schedules.insert(label.clone(), schedule);
+        if exists.is_none() {
+            if let Some(root) = schedules.get_mut(&original) {
+                let label = label.clone();
+                root.add_systems(move |w: &mut World| {
+                    let _ = w.try_run_schedule(label.clone());
+                });
+            } else {
+                let label = label.clone();
+                let mut root = Schedule::new();
+                root.add_systems(move |w: &mut World| {
+                    let _ = w.try_run_schedule(label.clone());
+                });
+                schedules.insert(original, root);
+            }
+        }
+    }
+    world.insert_resource(inner);
+}
+
+fn cleanup(
+    mut commands: Commands,
+    mut schedules: ResMut<Schedules>,
+    reloadable: Res<ReloadableAppInner>,
+) {
+    for schedule in reloadable.labels.iter() {
         println!("Attempting cleanup for {schedule:?}");
-        let updated = Schedule::new();
-        let cleadn = schedules.insert(schedule.dyn_clone(), updated);
+        let cleadn = schedules.insert(schedule.clone(), Schedule::default());
         println!(
             "Tried cleaning {schedule:?} was empty: {}",
             cleadn.is_none()
         );
     }
+
+    commands.insert_resource(ReloadableApp::default());
 }
 
 fn reload(world: &mut World) {
@@ -248,5 +298,7 @@ fn reload(world: &mut World) {
     if !internal_state.updated_this_frame {
         return;
     }
+    let _ = world.try_run_schedule(CleanupReloaded);
     let _ = world.try_run_schedule(SetupReload);
+    register_schedules(world);
 }

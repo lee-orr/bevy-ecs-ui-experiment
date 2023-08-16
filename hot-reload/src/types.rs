@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use bevy::{
     ecs::schedule::ScheduleLabel,
     prelude::*,
-    utils::{HashSet, Instant},
+    utils::{HashMap, HashSet, Instant},
 };
 use libloading::Library;
 
@@ -37,62 +37,44 @@ pub(crate) struct ReloadableAppInner {
     pub labels: HashSet<Box<dyn ScheduleLabel>>,
 }
 
-pub struct ReloadableApp<'w> {
-    inner: ReloadableAppInner,
-    world: &'w mut World,
+#[derive(Default, Resource)]
+pub struct ReloadableApp {
+    schedules: HashMap<Box<dyn ScheduleLabel>, Schedule>,
 }
 
-#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash)]
-pub struct ReloadableSchedule<T: ScheduleLabel + Eq + ::std::hash::Hash + Clone>(T);
+#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct ReloadableSchedule<T: ScheduleLabel>(T);
 
-impl<T: ScheduleLabel + Eq + ::std::hash::Hash + Clone> Clone for ReloadableSchedule<T> {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
+impl<T: ScheduleLabel> ReloadableSchedule<T> {
+    pub fn get_inner(&self) -> &T {
+        &self.0
     }
 }
 
-impl<T: ScheduleLabel + Eq + ::std::hash::Hash + Clone> ReloadableSchedule<T> {
-    pub fn new(label: &T) -> Self {
-        Self(label.clone())
+impl<T: ScheduleLabel> ReloadableSchedule<T> {
+    pub fn new(label: T) -> Self {
+        Self(label)
     }
 }
 
-impl<'w> ReloadableApp<'w> {
-    pub(crate) fn new(world: &'w mut World) -> Self {
-        let inner = world
-            .get_resource::<ReloadableAppInner>()
-            .cloned()
-            .unwrap_or_default();
-        Self { inner, world }
+impl ReloadableApp {
+    pub(crate) fn new() -> Self {
+        Self {
+            schedules: Default::default(),
+        }
+    }
+
+    pub(crate) fn into_iter(self) -> impl Iterator<Item = (Box<dyn ScheduleLabel>, Schedule)> {
+        self.schedules.into_iter()
     }
 
     pub fn add_systems<M, L: ScheduleLabel + Eq + ::std::hash::Hash + Clone>(
         &mut self,
-        original: L,
+        schedule: L,
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self {
-        let schedule = ReloadableSchedule::new(&original);
-
-        if self.inner.labels.insert(schedule.dyn_clone()) {
-            println!("Schedule {schedule:?} added");
-            let Some(mut schedules) = self.world.get_resource_mut::<Schedules>() else {
-                return self;
-            };
-            let target = schedule.clone();
-            let runner = move |world: &mut World| run_reloadable_schedule(&target, world);
-
-            if let Some(schedule) = schedules.get_mut(&original) {
-                schedule.add_systems(runner);
-            } else {
-                let mut new_schedule = Schedule::new();
-                new_schedule.add_systems(runner);
-                schedules.insert(original, new_schedule);
-            }
-        } else {
-            println!("Schedule {schedule:?} already existed");
-        }
-
-        let mut schedules = self.world.resource_mut::<Schedules>();
+        let mut schedules = &mut self.schedules;
+        let schedule: Box<dyn ScheduleLabel> = Box::new(schedule);
 
         if let Some(schedule) = schedules.get_mut(&schedule) {
             println!("Adding systems to schedule");
