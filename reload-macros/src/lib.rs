@@ -2,9 +2,42 @@ extern crate proc_macro;
 extern crate quote;
 
 use proc_macro::TokenStream;
+use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{parse_macro_input, parse_str, Expr, ItemFn};
+use syn::{parse_macro_input, ItemFn};
 
+#[proc_macro_attribute]
+pub fn hot_reload_setup(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let ast: ItemFn = parse_macro_input!(item as ItemFn);
+
+    let fn_name = &ast.sig.ident;
+
+    let inner_fn_name_str = format!("hot_reloaded_inner_{fn_name}");
+    let inner_fn_name = Ident::new(&inner_fn_name_str, Span::call_site());
+
+    quote! {
+
+        #[no_mangle]
+        pub fn #inner_fn_name(app: &mut ReloadableApp) {
+            #ast
+
+            #fn_name(app);
+        }
+
+        #[allow(non_camel_case_types)]
+        struct #fn_name;
+
+        impl hot_reload::ReloadableSetup for #fn_name {
+            fn setup_function_name() -> &'static str {
+                #inner_fn_name_str
+            }
+        }
+
+    }
+    .into()
+}
+
+/*
 #[proc_macro_attribute]
 pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let ast: ItemFn = parse_macro_input!(item as ItemFn);
@@ -88,3 +121,4 @@ pub fn hot_bevy(input: TokenStream) -> TokenStream {
         .into()
     }
 }
+*/

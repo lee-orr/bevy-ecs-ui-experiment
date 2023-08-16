@@ -11,7 +11,7 @@ pub struct LibPathSet {
 }
 
 impl LibPathSet {
-    pub fn new(options: HotReloadOptions) -> Option<Self> {
+    pub fn new(options: &HotReloadOptions) -> Option<Self> {
         println!("Setting Up Hot Reload Paths {options:#?}");
         let HotReloadOptions {
             lib_name,
@@ -59,7 +59,7 @@ impl LibPathSet {
 
         println!("Watch Folder {watch_folder:?}");
 
-        let lib_name = lib_name.unwrap_or({
+        let lib_name = lib_name.as_ref().cloned().unwrap_or({
             std::env::current_exe()
                 .ok()
                 .and_then(|v| v.file_stem().map(|v| v.to_string_lossy().to_string()))

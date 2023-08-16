@@ -11,6 +11,6 @@ crate-type = ["rlib", "dylib"]
 
 [dependencies]
 
-bevy = "0.11"
+bevy = { version = "0.11" }
 bevy-inspector-egui = "*"
 hot-reload = { path = "../hot-reload", features = [] }

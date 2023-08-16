@@ -1,14 +1,9 @@
-use std::{path::PathBuf, sync::mpsc};
+use std::path::PathBuf;
 
 use bevy::{
-    app::PluginGroupBuilder,
-    ecs::system::SystemParam,
-    input::keyboard::*,
-    input::mouse::*,
-    input::{touchpad::*, *},
+    ecs::schedule::ScheduleLabel,
     prelude::*,
-    utils::Instant,
-    window::*,
+    utils::{HashSet, Instant},
 };
 
 pub trait ReloadableComponent {}
@@ -17,96 +12,106 @@ pub trait ReloadableResource {}
 
 pub struct RunFrame;
 
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Reflect)]
 pub struct HotReload {
     pub last_updated_frame: usize,
     pub version: usize,
     pub updated_this_frame: bool,
 }
 
-#[derive(Debug, Event)]
+#[derive(Debug, Event, Reflect)]
 pub struct HotReloadEvent {
     pub last_update_time: Instant,
 }
 
-pub trait HotReloadablePlugins {
-    fn setup_for_hot_reload(self) -> PluginGroupBuilder;
-}
-
-impl<T: PluginGroup> HotReloadablePlugins for T {
-    fn setup_for_hot_reload(self) -> PluginGroupBuilder {
-        #[cfg(not(feature = "bypass"))]
-        {
-            self.build().disable::<bevy::winit::WinitPlugin>()
-        }
-        #[cfg(feature = "bypass")]
-        {
-            self.build()
-        }
-    }
-}
-
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Reflect)]
 pub struct HotReloadOptions {
     pub lib_name: Option<String>,
     pub watch_folder: Option<PathBuf>,
     pub target_folder: Option<PathBuf>,
 }
 
-pub fn app_grabber() -> (oneshot::Sender<App>, oneshot::Receiver<App>) {
-    oneshot::channel()
+#[derive(Default, Resource, Clone)]
+pub(crate) struct ReloadableAppInner {
+    pub labels: HashSet<Box<dyn ScheduleLabel>>,
 }
 
-#[derive(SystemParam)]
-pub struct WindowAndInputEventWriters<'w> {
-    // `winit` `WindowEvent`s
-    window_resized: EventWriter<'w, WindowResized>,
-    window_close_requested: EventWriter<'w, WindowCloseRequested>,
-    window_scale_factor_changed: EventWriter<'w, WindowScaleFactorChanged>,
-    window_backend_scale_factor_changed: EventWriter<'w, WindowBackendScaleFactorChanged>,
-    window_focused: EventWriter<'w, WindowFocused>,
-    window_moved: EventWriter<'w, WindowMoved>,
-    window_theme_changed: EventWriter<'w, WindowThemeChanged>,
-    window_destroyed: EventWriter<'w, WindowDestroyed>,
-    keyboard_input: EventWriter<'w, KeyboardInput>,
-    character_input: EventWriter<'w, ReceivedCharacter>,
-    mouse_button_input: EventWriter<'w, MouseButtonInput>,
-    touchpad_magnify_input: EventWriter<'w, TouchpadMagnify>,
-    touchpad_rotate_input: EventWriter<'w, TouchpadRotate>,
-    mouse_wheel_input: EventWriter<'w, MouseWheel>,
-    touch_input: EventWriter<'w, TouchInput>,
-    ime_input: EventWriter<'w, Ime>,
-    file_drag_and_drop: EventWriter<'w, FileDragAndDrop>,
-    cursor_moved: EventWriter<'w, CursorMoved>,
-    cursor_entered: EventWriter<'w, CursorEntered>,
-    cursor_left: EventWriter<'w, CursorLeft>,
-    // `winit` `DeviceEvent`s
-    mouse_motion: EventWriter<'w, MouseMotion>,
+pub struct ReloadableApp<'w> {
+    inner: ReloadableAppInner,
+    world: &'w mut World,
 }
 
-#[derive(SystemParam)]
-pub struct WindowAndInputEventReaders<'w, 's> {
-    // `winit` `WindowEvent`s
-    window_resized: EventReader<'w, 's, WindowResized>,
-    window_close_requested: EventReader<'w, 's, WindowCloseRequested>,
-    window_scale_factor_changed: EventReader<'w, 's, WindowScaleFactorChanged>,
-    window_backend_scale_factor_changed: EventReader<'w, 's, WindowBackendScaleFactorChanged>,
-    window_focused: EventReader<'w, 's, WindowFocused>,
-    window_moved: EventReader<'w, 's, WindowMoved>,
-    window_theme_changed: EventReader<'w, 's, WindowThemeChanged>,
-    window_destroyed: EventReader<'w, 's, WindowDestroyed>,
-    keyboard_input: EventReader<'w, 's, KeyboardInput>,
-    character_input: EventReader<'w, 's, ReceivedCharacter>,
-    mouse_button_input: EventReader<'w, 's, MouseButtonInput>,
-    touchpad_magnify_input: EventReader<'w, 's, TouchpadMagnify>,
-    touchpad_rotate_input: EventReader<'w, 's, TouchpadRotate>,
-    mouse_wheel_input: EventReader<'w, 's, MouseWheel>,
-    touch_input: EventReader<'w, 's, TouchInput>,
-    ime_input: EventReader<'w, 's, Ime>,
-    file_drag_and_drop: EventReader<'w, 's, FileDragAndDrop>,
-    cursor_moved: EventReader<'w, 's, CursorMoved>,
-    cursor_entered: EventReader<'w, 's, CursorEntered>,
-    cursor_left: EventReader<'w, 's, CursorLeft>,
-    // `winit` `DeviceEvent`s
-    mouse_motion: EventReader<'w, 's, MouseMotion>,
+#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash)]
+pub struct ReloadableSchedule<T: ScheduleLabel + Eq + ::std::hash::Hash + Clone>(T);
+
+impl<T: ScheduleLabel + Eq + ::std::hash::Hash + Clone> Clone for ReloadableSchedule<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<T: ScheduleLabel + Eq + ::std::hash::Hash + Clone> ReloadableSchedule<T> {
+    pub fn new(label: &T) -> Self {
+        Self(label.clone())
+    }
+}
+
+impl<'w> ReloadableApp<'w> {
+    pub(crate) fn new(world: &'w mut World) -> Self {
+        let inner = world
+            .get_resource::<ReloadableAppInner>()
+            .cloned()
+            .unwrap_or_default();
+        Self { inner, world }
+    }
+
+    pub fn add_systems<M, L: ScheduleLabel + Eq + ::std::hash::Hash + Clone>(
+        &mut self,
+        original: L,
+        systems: impl IntoSystemConfigs<M>,
+    ) -> &mut Self {
+        let schedule = ReloadableSchedule::new(&original);
+
+        if self.inner.labels.insert(schedule.dyn_clone()) {
+            let Some(mut schedules) = self.world.get_resource_mut::<Schedules>() else {
+                return self;
+            };
+            let target = schedule.clone();
+            let runner = move |world: &mut World| run_reloadable_schedule(&target, world);
+
+            if let Some(schedule) = schedules.get_mut(&original) {
+                schedule.add_systems(runner);
+            } else {
+                let mut new_schedule = Schedule::new();
+                new_schedule.add_systems(runner);
+                schedules.insert(original, new_schedule);
+            }
+        }
+
+        let mut schedules = self.world.resource_mut::<Schedules>();
+
+        if let Some(schedule) = schedules.get_mut(&schedule) {
+            schedule.add_systems(systems);
+        } else {
+            let mut new_schedule = Schedule::new();
+            new_schedule.add_systems(systems);
+            schedules.insert(schedule, new_schedule);
+        }
+
+        self
+    }
+}
+
+fn run_reloadable_schedule<T: AsRef<dyn ScheduleLabel>>(label: &T, world: &mut World) {
+    let _ = world.try_run_schedule(label);
+}
+
+#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct SetupReload;
+
+#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct CleanupReloaded;
+
+pub trait ReloadableSetup {
+    fn setup_function_name() -> &'static str;
 }

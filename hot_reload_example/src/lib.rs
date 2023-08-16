@@ -1,19 +1,26 @@
-use std::time::Duration;
-
-use bevy::{app::ScheduleRunnerPlugin, prelude::*};
+use bevy::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use hot_reload::{reload_macros::hot_bevy_main, *};
+use hot_reload::{reload_macros::hot_reload_setup, *};
 
-#[hot_bevy_main]
-pub fn bevy_main() -> App {
+pub fn bevy_main() {
     println!("Creating app");
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins.setup_for_hot_reload())
+    app.add_plugins(DefaultPlugins)
         .add_plugins(WorldInspectorPlugin::new())
-        .add_systems(Startup, setup);
+        .add_plugins(HotReloadPlugin::default())
+        .add_systems(Startup, setup)
+        .add_reloadables::<reloadable>();
 
-    app
+    app.run();
 }
+
+#[hot_reload_setup]
+fn reloadable(app: &mut ReloadableApp) {
+    app.add_systems(Update, move_cube);
+}
+
+#[derive(Component)]
+struct Cube;
 
 fn setup(
     mut commands: Commands,
@@ -27,12 +34,15 @@ fn setup(
         ..default()
     });
     // cube
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-        material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
-        ..default()
-    });
+    commands.spawn((
+        Cube,
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+            transform: Transform::from_xyz(0.0, 0.5, 0.0),
+            ..default()
+        },
+    ));
     // light
     commands.spawn(PointLightBundle {
         point_light: PointLight {
@@ -50,6 +60,10 @@ fn setup(
     });
 }
 
-fn print_update() {
-    println!("UPDATING STUFF");
+fn move_cube(mut cubes: Query<&mut Transform, With<Cube>>, time: Res<Time>) {
+    let x_position = 2. * time.elapsed_seconds().sin();
+
+    for mut cube in cubes.iter_mut() {
+        cube.translation.x = x_position;
+    }
 }
