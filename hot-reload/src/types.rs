@@ -58,12 +58,6 @@ impl<T: ScheduleLabel> ReloadableSchedule<T> {
 }
 
 impl ReloadableApp {
-    pub(crate) fn new() -> Self {
-        Self {
-            schedules: Default::default(),
-        }
-    }
-
     pub(crate) fn into_iter(self) -> impl Iterator<Item = (Box<dyn ScheduleLabel>, Schedule)> {
         self.schedules.into_iter()
     }
@@ -73,7 +67,7 @@ impl ReloadableApp {
         schedule: L,
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self {
-        let mut schedules = &mut self.schedules;
+        let schedules = &mut self.schedules;
         let schedule: Box<dyn ScheduleLabel> = Box::new(schedule);
 
         if let Some(schedule) = schedules.get_mut(&schedule) {
@@ -88,10 +82,6 @@ impl ReloadableApp {
 
         self
     }
-}
-
-fn run_reloadable_schedule<T: AsRef<dyn ScheduleLabel>>(label: &T, world: &mut World) {
-    let _ = world.try_run_schedule(label);
 }
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
@@ -110,7 +100,7 @@ pub struct LibraryHolder(Option<Library>, PathBuf);
 impl Drop for LibraryHolder {
     fn drop(&mut self) {
         self.0 = None;
-        std::fs::remove_file(&self.1);
+        let _ = std::fs::remove_file(&self.1);
     }
 }
 

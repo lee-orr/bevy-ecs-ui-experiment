@@ -1,11 +1,10 @@
 mod lib_set;
 mod types;
-use std::fs::metadata;
+
 use std::thread;
 
-use bevy::winit::{WinitPlugin, WinitSettings};
 use bevy_hot_winit::HotWinitPlugin;
-use crossbeam::channel::{Receiver, RecvError, Sender, TryRecvError};
+
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -92,7 +91,7 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
     let _ = std::fs::remove_file(library_paths.lib_file_path());
 
     let (end_watch_tx, end_watch_rx) = crossbeam::channel::bounded::<EndWatch>(1);
-    let (reload_lib_tx, reload_lib_rx) = crossbeam::channel::bounded::<ReloadLibEvent>(5);
+    let (_reload_lib_tx, _reload_lib_rx) = crossbeam::channel::bounded::<ReloadLibEvent>(5);
 
     let end_cargo_watch_rx = end_watch_rx.clone();
     let watch_folder = library_paths.watch_folder.clone();
@@ -172,7 +171,7 @@ impl Plugin for HotReloadPlugin {
         let reload_schedule = Schedule::new();
         let cleanup_schedule = Schedule::new();
 
-        app.add_plugins(HotWinitPlugin::default())
+        app.add_plugins(HotWinitPlugin)
             .add_schedule(SetupReload, reload_schedule)
             .add_schedule(CleanupReloaded, cleanup_schedule)
             .init_resource::<HotReload>()
