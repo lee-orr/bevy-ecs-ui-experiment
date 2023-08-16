@@ -23,6 +23,7 @@ pub use types::*;
 #[derive(Resource)]
 struct InternalHotReload {
     pub library: Option<Arc<LibraryHolder>>,
+    pub last_lib: Option<Arc<LibraryHolder>>,
     pub updated_this_frame: bool,
     pub last_update_time: Instant,
     pub libs: LibPathSet,
@@ -53,6 +54,7 @@ fn update_lib_system(
 
     if let Some(lib) = update_lib(&hot_reload_int.libs) {
         println!("Got Update");
+        hot_reload_int.last_lib = hot_reload_int.library.clone();
         hot_reload_int.library = Some(lib);
         hot_reload_int.updated_this_frame = true;
         hot_reload.updated_this_frame = true;
@@ -180,6 +182,7 @@ impl Plugin for HotReloadPlugin {
             .add_event::<HotReloadEvent>()
             .insert_resource(InternalHotReload {
                 library: None,
+                last_lib: None,
                 updated_this_frame: true,
                 last_update_time: Instant::now().checked_sub(Duration::from_secs(1)).unwrap(),
                 libs: self.0.clone(),
@@ -197,43 +200,52 @@ pub trait ReloadableAppSetup {
 
 impl ReloadableAppSetup for App {
     fn add_reloadables<T: ReloadableSetup>(&mut self) -> &mut Self {
-        let name = T::setup_function_name().as_bytes();
+        let name = T::setup_function_name();
         let system = move |world: &mut World| setup_reloadable_app::<T>(name, world);
         self.add_systems(SetupReload, system)
     }
 }
 
-fn setup_reloadable_app<T: ReloadableSetup>(name: &'static [u8], world: &mut World) {
+fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut World) {
+    println!("Setting up reloadables at {name}");
     let Some(internal_state) = world.get_resource::<InternalHotReload>() else {
         return;
     };
 
+    println!("got internal reload state");
+
     let Some(lib) = &internal_state.library else {
+        println!("can't get library");
         let Some(mut reloadable) = world.get_resource_mut::<ReloadableApp>() else {
             return;
         };
+        println!("setup default");
 
         T::default_function(&mut reloadable);
         return;
     };
     let lib = lib.clone();
     let Some(lib) = lib.library() else {
+        println!("can't access library internals ");
         let Some(mut reloadable) = world.get_resource_mut::<ReloadableApp>() else {
             return;
         };
+        println!("setup default");
         T::default_function(&mut reloadable);
         return;
     };
 
     let Some(mut reloadable) = world.get_resource_mut::<ReloadableApp>() else {
+        println!("no reloadable app");
         return;
     };
     unsafe {
         let func: libloading::Symbol<unsafe extern "C" fn(&mut ReloadableApp)> = lib
-            .get(name)
+            .get(name.as_bytes())
             .unwrap_or_else(|_| panic!("Can't find reloadable setup function",));
         func(&mut reloadable)
     };
+    println!("setup for {name} complete");
 }
 
 fn register_schedules(world: &mut World) {
@@ -288,8 +300,10 @@ fn cleanup(
             cleadn.is_none()
         );
     }
+    println!("Cleanup almost complete");
 
     commands.insert_resource(ReloadableApp::default());
+    println!("Cleanup complete");
 }
 
 fn reload(world: &mut World) {

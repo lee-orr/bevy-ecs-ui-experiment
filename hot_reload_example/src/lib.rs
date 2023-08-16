@@ -70,6 +70,7 @@ fn move_cube(mut cubes: Query<&mut Transform, With<Cube>>, time: Res<Time>) {
     let x_position = 1. * time.elapsed_seconds().sin();
 
     for mut cube in cubes.iter_mut() {
-        cube.translation.y = x_position;
+        cube.translation.y = x_position * -1. + 1.;
+        cube.translation.x = x_position * 1.5;
     }
 }
