@@ -1,3 +1,9 @@
 [workspace]
 resolver = "2"
-members = ["ui-experiment", "reload-macros", "hot-reload", "hot_reload_example"]
+members = [
+    "ui-experiment",
+    "reload-macros",
+    "hot-reload",
+    "hot_reload_example",
+    "bevy_hot_winit",
+]

@@ -5,6 +5,7 @@ use bevy::{
     prelude::*,
     utils::{HashSet, Instant},
 };
+use libloading::Library;
 
 pub trait ReloadableComponent {}
 
@@ -31,7 +32,7 @@ pub struct HotReloadOptions {
     pub target_folder: Option<PathBuf>,
 }
 
-#[derive(Default, Resource, Clone)]
+#[derive(Default, Resource, Clone, Debug)]
 pub(crate) struct ReloadableAppInner {
     pub labels: HashSet<Box<dyn ScheduleLabel>>,
 }
@@ -73,6 +74,7 @@ impl<'w> ReloadableApp<'w> {
         let schedule = ReloadableSchedule::new(&original);
 
         if self.inner.labels.insert(schedule.dyn_clone()) {
+            println!("Schedule {schedule:?} added");
             let Some(mut schedules) = self.world.get_resource_mut::<Schedules>() else {
                 return self;
             };
@@ -86,13 +88,17 @@ impl<'w> ReloadableApp<'w> {
                 new_schedule.add_systems(runner);
                 schedules.insert(original, new_schedule);
             }
+        } else {
+            println!("Schedule {schedule:?} already existed");
         }
 
         let mut schedules = self.world.resource_mut::<Schedules>();
 
         if let Some(schedule) = schedules.get_mut(&schedule) {
+            println!("Adding systems to schedule");
             schedule.add_systems(systems);
         } else {
+            println!("Creating schedule with systems");
             let mut new_schedule = Schedule::new();
             new_schedule.add_systems(systems);
             schedules.insert(schedule, new_schedule);
@@ -114,4 +120,36 @@ pub struct CleanupReloaded;
 
 pub trait ReloadableSetup {
     fn setup_function_name() -> &'static str;
+    fn default_function(app: &mut ReloadableApp);
+}
+
+pub struct LibraryHolder(Option<Library>, PathBuf);
+
+impl Drop for LibraryHolder {
+    fn drop(&mut self) {
+        self.0 = None;
+        std::fs::remove_file(&self.1);
+    }
+}
+
+impl LibraryHolder {
+    pub fn new(path: &PathBuf) -> Option<Self> {
+        let extension = path.extension();
+        let uuid = uuid::Uuid::new_v4();
+        let new_path = path.clone();
+        let mut new_path = new_path.with_file_name(uuid.to_string());
+        if let Some(extension) = extension {
+            new_path.set_extension(extension);
+        }
+        println!("New path: {new_path:?}");
+        std::fs::rename(path, &new_path).ok()?;
+        println!("Copied file to new path");
+
+        let lib = unsafe { libloading::Library::new(&new_path).ok() }?;
+        println!("Loaded library");
+        Some(Self(Some(lib), new_path))
+    }
+    pub fn library(&self) -> Option<&Library> {
+        self.0.as_ref()
+    }
 }

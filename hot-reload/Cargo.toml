@@ -15,4 +15,7 @@ bevy = { version = "0.11", default-features = false, features = [
 ] }
 libloading = "0.8"
 reload-macros = { path = "../reload-macros" }
-oneshot = "0.1"
+crossbeam = "0.8"
+tempfile = "3"
+uuid = "*"
+bevy_hot_winit = { path = "../bevy_hot_winit" }

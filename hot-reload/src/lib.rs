@@ -1,12 +1,17 @@
 mod lib_set;
 mod types;
 use std::fs::metadata;
+use std::thread;
 
+use bevy::winit::{WinitPlugin, WinitSettings};
+use bevy_hot_winit::HotWinitPlugin;
+use crossbeam::channel::{Receiver, RecvError, Sender, TryRecvError};
+use std::sync::Arc;
 use std::time::Duration;
 
 use bevy::ecs::prelude::*;
 
-use bevy::prelude::{App, Plugin, PreUpdate};
+use bevy::prelude::{App, Plugin, PreStartup, PreUpdate};
 
 use bevy::utils::Instant;
 
@@ -14,21 +19,32 @@ pub extern crate libloading;
 pub extern crate reload_macros;
 
 use lib_set::*;
-use libloading::Library;
 pub use types::*;
 
 #[derive(Resource)]
 struct InternalHotReload {
-    pub library: Option<Library>,
+    pub library: Option<Arc<LibraryHolder>>,
     pub updated_this_frame: bool,
     pub last_update_time: Instant,
-    pub library_paths: LibPathSet,
-
-    #[allow(dead_code)]
-    pub cargo_watch_child: ChildGuard,
+    pub libs: LibPathSet,
 }
 
-fn update_lib(
+fn update_lib(library_paths: &LibPathSet) -> Option<Arc<LibraryHolder>> {
+    let lib_file_path = library_paths.lib_file_path();
+
+    if lib_file_path.is_file() {
+        println!("Found library {lib_file_path:?}");
+        let Some(holder) = LibraryHolder::new(&lib_file_path) else {
+            return None;
+        };
+        println!("Generated file holder");
+        Some(Arc::new(holder))
+    } else {
+        None
+    }
+}
+
+fn update_lib_system(
     mut hot_reload_int: ResMut<InternalHotReload>,
     mut hot_reload: ResMut<HotReload>,
     mut event: EventWriter<HotReloadEvent>,
@@ -36,46 +52,18 @@ fn update_lib(
     hot_reload_int.updated_this_frame = false;
     hot_reload.updated_this_frame = false;
 
-    let lib_file_path = hot_reload_int.library_paths.lib_file_path();
-    let hot_in_use_file_path = hot_reload_int.library_paths.hot_in_use_file_path();
-
-    // copy over and load lib if it has been updated, or hasn't been initially
-    if lib_file_path.is_file() {
-        if hot_in_use_file_path.is_file() {
-            let hot_lib_meta = metadata(&hot_in_use_file_path).unwrap();
-            let main_lib_meta = metadata(&lib_file_path).unwrap();
-            if hot_lib_meta.modified().unwrap() < main_lib_meta.modified().unwrap()
-                && hot_reload_int.last_update_time.elapsed() > Duration::from_secs(1)
-            {
-                hot_reload_int.library = None;
-                let _ = std::fs::copy(lib_file_path, &hot_in_use_file_path);
-            }
-        } else {
-            hot_reload_int.library = None;
-            std::fs::copy(lib_file_path, &hot_in_use_file_path).unwrap();
-        }
-        if hot_reload_int.library.is_none() {
-            bevy::log::info!("No library set");
-            unsafe {
-                let lib = libloading::Library::new(&hot_in_use_file_path).unwrap_or_else(|_| {
-                    panic!(
-                        "Can't open required library {}",
-                        &hot_in_use_file_path.to_string_lossy()
-                    )
-                });
-
-                hot_reload_int.library = Some(lib);
-                hot_reload_int.updated_this_frame = true;
-                hot_reload_int.last_update_time = Instant::now();
-                bevy::log::info!("Hot Reloaded");
-                event.send(HotReloadEvent {
-                    last_update_time: hot_reload_int.last_update_time,
-                });
-            }
-        }
+    if let Some(lib) = update_lib(&hot_reload_int.libs) {
+        println!("Got Update");
+        hot_reload_int.library = Some(lib);
+        hot_reload_int.updated_this_frame = true;
+        hot_reload.updated_this_frame = true;
+        hot_reload_int.last_update_time = Instant::now();
     }
 
     hot_reload.updated_this_frame = hot_reload_int.updated_this_frame;
+    event.send(HotReloadEvent {
+        last_update_time: hot_reload_int.last_update_time,
+    });
 }
 
 pub struct ChildGuard(pub std::process::Child);
@@ -89,68 +77,118 @@ impl Drop for ChildGuard {
     }
 }
 
-#[derive(Default)]
-pub struct HotReloadPlugin(HotReloadOptions);
+pub enum ReloadLibEvent {
+    UpdatedLib(Arc<LibraryHolder>),
+    Error(String),
+}
+
+pub struct EndWatch;
+
+pub fn run_reloadabe_app(options: HotReloadOptions) {
+    println!("Current Thread: {:?}", std::thread::current().id());
+    let library_paths = LibPathSet::new(&options).unwrap();
+    println!("Paths: {library_paths:?}");
+
+    let _ = std::fs::remove_file(library_paths.lib_file_path());
+
+    let (end_watch_tx, end_watch_rx) = crossbeam::channel::bounded::<EndWatch>(1);
+    let (reload_lib_tx, reload_lib_rx) = crossbeam::channel::bounded::<ReloadLibEvent>(5);
+
+    let end_cargo_watch_rx = end_watch_rx.clone();
+    let watch_folder = library_paths.watch_folder.clone();
+    let folder = library_paths.folder.clone();
+
+    thread::spawn(move || {
+        println!("Spawned watch thread");
+        println!("Watch Thread: {:?}", std::thread::current().id());
+        let build_cmd = format!(
+            "build --lib --target-dir {} --features bevy/dynamic_linking",
+            folder.parent().unwrap().to_string_lossy()
+        );
+
+        let mut cmd = std::process::Command::new("cargo");
+
+        cmd.arg("watch")
+            .arg("--watch-when-idle")
+            .arg("-w")
+            .arg(watch_folder.as_os_str())
+            .arg("-x")
+            .arg(build_cmd);
+        println!("Spawning command: {cmd:?}");
+
+        let h = cmd
+            .spawn()
+            .expect("cargo watch command failed, make sure cargo watch is installed");
+        println!("spawned watcher");
+
+        let _ = end_cargo_watch_rx.recv();
+
+        println!("Closing out {:?}", h);
+    });
+
+    let lib = get_initial_library(&library_paths);
+
+    if let Some(lib) = lib.library() {
+        println!("Executing first run");
+        unsafe {
+            let func: libloading::Symbol<unsafe extern "C" fn(HotReloadPlugin)> = lib
+                .get("hot_reload_internal_main".as_bytes())
+                .unwrap_or_else(|_| panic!("Can't find main function",));
+            println!("Run App Thread: {:?}", std::thread::current().id());
+            func(HotReloadPlugin::new(library_paths.clone()));
+        };
+    } else {
+        eprint!("Library still somehow missing");
+    }
+    println!("Got to the end for some reason...");
+
+    let _ = end_watch_tx.send(EndWatch);
+}
+
+fn get_initial_library(library_paths: &LibPathSet) -> Arc<LibraryHolder> {
+    loop {
+        if let Some(library) = update_lib(library_paths) {
+            println!("Update Thread: {:?}", std::thread::current().id());
+            println!("Updated lib");
+            return library;
+        }
+    }
+}
+
+pub struct HotReloadPlugin(LibPathSet);
 
 impl HotReloadPlugin {
-    pub fn new(options: HotReloadOptions) -> Self {
-        Self(options)
+    pub fn new(libs: LibPathSet) -> Self {
+        Self(libs)
     }
 }
 
 impl Plugin for HotReloadPlugin {
     fn build(&self, app: &mut App) {
-        let options = &self.0;
-        let library_paths = LibPathSet::new(options).unwrap();
-        println!("Paths: {library_paths:?}");
-
-        let _ = std::fs::remove_file(library_paths.lib_file_path());
-
-        let build_cmd = format!(
-            "build --lib --target-dir {} --features bevy/dynamic_linking",
-            library_paths.folder.parent().unwrap().to_string_lossy()
+        println!(
+            "Build Hot Reload Plugin Thread: {:?}",
+            std::thread::current().id()
         );
-
-        let child = ChildGuard({
-            let mut cmd = std::process::Command::new("cargo");
-
-            cmd.arg("watch")
-                .arg("--watch-when-idle")
-                .arg("-w")
-                .arg(library_paths.watch_folder.as_os_str())
-                .arg("-x")
-                .arg(build_cmd);
-            println!("Spawning command: {cmd:?}");
-
-            cmd.spawn()
-                .expect("cargo watch command failed, make sure cargo watch is installed")
-        });
-
         let reload_schedule = Schedule::new();
         let cleanup_schedule = Schedule::new();
 
-        app.add_schedule(SetupReload, reload_schedule)
+        app.add_plugins(HotWinitPlugin::default())
+            .add_schedule(SetupReload, reload_schedule)
             .add_schedule(CleanupReloaded, cleanup_schedule)
-            .register_type::<HotReload>()
-            .register_type::<HotReloadEvent>()
             .init_resource::<HotReload>()
             .init_resource::<ReloadableAppInner>()
-            .init_non_send_resource::<ReloadedApp>()
             .add_event::<HotReloadEvent>()
             .insert_resource(InternalHotReload {
-                cargo_watch_child: child,
                 library: None,
-                updated_this_frame: false,
-                // Using 1 second ago so to trigger lib load immediately instead of in 1 second
+                updated_this_frame: true,
                 last_update_time: Instant::now().checked_sub(Duration::from_secs(1)).unwrap(),
-                library_paths,
+                libs: self.0.clone(),
             })
-            .add_systems(PreUpdate, (update_lib, cleanup, reload).chain());
+            .add_systems(PreStartup, reload)
+            .add_systems(PreUpdate, (update_lib_system, cleanup, reload).chain());
+        println!("Finished build");
     }
 }
-
-#[derive(Default)]
-struct ReloadedApp(Option<Box<App>>);
 
 pub trait ReloadableAppSetup {
     fn add_reloadables<T: ReloadableSetup>(&mut self) -> &mut Self;
@@ -159,38 +197,49 @@ pub trait ReloadableAppSetup {
 impl ReloadableAppSetup for App {
     fn add_reloadables<T: ReloadableSetup>(&mut self) -> &mut Self {
         let name = T::setup_function_name().as_bytes();
-        let system = move |world: &mut World| setup_reloadable_app(name, world);
+        let system = move |world: &mut World| setup_reloadable_app::<T>(name, world);
         self.add_systems(SetupReload, system)
     }
 }
 
-fn setup_reloadable_app(name: &'static [u8], world: &mut World) {
-    let Some(internal_state) = world.remove_resource::<InternalHotReload>() else {
+fn setup_reloadable_app<T: ReloadableSetup>(name: &'static [u8], world: &mut World) {
+    let Some(internal_state) = world.get_resource::<InternalHotReload>() else {
         return;
     };
     if !internal_state.updated_this_frame {
-        world.insert_resource(internal_state);
         return;
     }
+
     let Some(lib) = &internal_state.library else {
-        world.insert_resource(internal_state);
+        let mut reloadable = ReloadableApp::new(world);
+        T::default_function(&mut reloadable);
         return;
     };
-
+    let lib = lib.clone();
+    let Some(lib) = lib.library() else {
+        let mut reloadable = ReloadableApp::new(world);
+        T::default_function(&mut reloadable);
+        return;
+    };
     let mut reloadable = ReloadableApp::new(world);
+
     unsafe {
         let func: libloading::Symbol<unsafe extern "C" fn(&mut ReloadableApp)> = lib
             .get(name)
             .unwrap_or_else(|_| panic!("Can't find reloadable setup function",));
         func(&mut reloadable)
     };
-    world.insert_resource(internal_state);
 }
 
 fn cleanup(mut schedules: ResMut<Schedules>, inner: Res<ReloadableAppInner>) {
     for schedule in inner.labels.iter() {
+        println!("Attempting cleanup for {schedule:?}");
         let updated = Schedule::new();
-        schedules.insert(schedule.dyn_clone(), updated);
+        let cleadn = schedules.insert(schedule.dyn_clone(), updated);
+        println!(
+            "Tried cleaning {schedule:?} was empty: {}",
+            cleadn.is_none()
+        );
     }
 }
 
@@ -199,8 +248,5 @@ fn reload(world: &mut World) {
     if !internal_state.updated_this_frame {
         return;
     }
-    let Some(_lib) = &internal_state.library else {
-        return;
-    };
     let _ = world.try_run_schedule(SetupReload);
 }

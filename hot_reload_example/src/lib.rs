@@ -1,15 +1,21 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, winit::WinitPlugin};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use hot_reload::{reload_macros::hot_reload_setup, *};
+use hot_reload::{
+    reload_macros::{hot_bevy_main, hot_reload_setup},
+    *,
+};
 
-pub fn bevy_main() {
+#[hot_bevy_main]
+pub fn bevy_main(reload: HotReloadPlugin) {
     println!("Creating app");
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins)
+    app.add_plugins(DefaultPlugins.build().disable::<WinitPlugin>())
         .add_plugins(WorldInspectorPlugin::new())
-        .add_plugins(HotReloadPlugin::default())
+        .add_plugins(reload)
         .add_systems(Startup, setup)
         .add_reloadables::<reloadable>();
+
+    println!("Run App: {:?}", std::thread::current().id());
 
     app.run();
 }
@@ -61,7 +67,7 @@ fn setup(
 }
 
 fn move_cube(mut cubes: Query<&mut Transform, With<Cube>>, time: Res<Time>) {
-    let x_position = 2. * time.elapsed_seconds().sin();
+    let x_position = 1. * time.elapsed_seconds().sin();
 
     for mut cube in cubes.iter_mut() {
         cube.translation.x = x_position;
