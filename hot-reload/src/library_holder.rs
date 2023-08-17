@@ -36,7 +36,6 @@ impl LibraryHolderInner {
 #[derive(Clone)]
 pub struct LibraryHolder(Arc<LibraryHolderInner>);
 
-
 impl LibraryHolder {
     pub fn new(path: &PathBuf) -> Option<Self> {
         let inner = LibraryHolderInner::new(path)?;

@@ -86,7 +86,7 @@ fn setup_cube(
         },
     ));
     commands.spawn((
-        Cube(Vec3::X * 2.),
+        Cube(Vec3::Z * 2.),
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
             material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),

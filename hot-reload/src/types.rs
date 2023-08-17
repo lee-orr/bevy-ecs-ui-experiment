@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
     utils::{HashMap, HashSet, Instant},
 };
-use libloading::Library;
+
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::InternalHotReload;
@@ -30,7 +30,7 @@ pub struct HotReloadOptions {
 }
 
 #[derive(Default, Resource, Clone, Debug)]
-pub(crate) struct ReloadableAppCleanup {
+pub struct ReloadableAppCleanup {
     pub labels: HashSet<Box<dyn ScheduleLabel>>,
 }
 
