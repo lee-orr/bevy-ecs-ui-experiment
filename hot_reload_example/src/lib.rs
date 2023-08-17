@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub fn bevy_main(reload: HotReloadPlugin) {
     println!("Creating app");
     let mut app = App::new();
-    app.add_state::<State>()
+    app.add_state::<AppState>()
         .add_plugins(DefaultPlugins.build().disable::<WinitPlugin>())
         .add_plugins(WorldInspectorPlugin::new())
         .add_plugins(reload)
@@ -23,16 +23,18 @@ pub fn bevy_main(reload: HotReloadPlugin) {
 }
 
 #[derive(States, PartialEq, Eq, Clone, Copy, Debug, Hash, Default)]
-pub enum State {
+pub enum AppState {
     #[default]
     State,
+    AnotherState,
 }
 
 #[hot_reload_setup]
 fn reloadable(app: &mut ReloadableAppContents) {
-    app.add_systems(Update, move_cube)
+    app.add_systems(Update, (move_cube, toggle))
         .insert_reloadable_resource::<VelocityMultiplier>()
-        .reset_setup::<Cube, _>(setup_cube);
+        .reset_setup::<Cube, _>(setup_cube)
+        .reset_setup_in_state::<Sphere, AppState, _>(AppState::AnotherState, setup_sphere);
 }
 
 #[derive(Component, Serialize, Deserialize)]
@@ -49,6 +51,9 @@ impl ReloadableComponent for Cube {
         "cube"
     }
 }
+
+#[derive(Component, Default)]
+pub struct Sphere;
 
 #[derive(Resource, serde::Serialize, serde::Deserialize, Debug)]
 struct VelocityMultiplier(Vec3);
@@ -85,6 +90,25 @@ fn setup_cube(
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
             material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+            transform: Transform::from_xyz(0.0, 0.5, 0.0),
+            ..default()
+        },
+    ));
+}
+
+fn setup_sphere(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands.spawn((
+        Sphere,
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::UVSphere {
+                radius: 0.8,
+                ..Default::default()
+            })),
+            material: materials.add(Color::ORANGE.into()),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
         },
@@ -133,5 +157,15 @@ fn move_cube(
 
     for (mut transform, base) in cubes.iter_mut() {
         transform.translation = position + base.0;
+    }
+}
+
+fn toggle(input: Res<Input<KeyCode>>, mut commands: Commands, current: Res<State<AppState>>) {
+    if input.just_pressed(KeyCode::Space) {
+        let next = match current.get() {
+            AppState::State => AppState::AnotherState,
+            AppState::AnotherState => AppState::State,
+        };
+        commands.insert_resource(NextState(Some(next)));
     }
 }

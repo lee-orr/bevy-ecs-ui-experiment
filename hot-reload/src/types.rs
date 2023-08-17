@@ -166,6 +166,7 @@ impl ReloadableApp for ReloadableAppContents {
         systems: impl IntoSystemConfigs<M>,
     ) -> &mut Self {
         self.add_systems(CleanupReloaded, clear_marked_system::<C>)
+            .add_systems(OnExit(state.clone()), clear_marked_system::<C>)
             .add_systems(
                 PreUpdate,
                 systems.run_if(
