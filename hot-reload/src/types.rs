@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use bevy::{
     ecs::schedule::ScheduleLabel,
     prelude::*,
-    reflect,
     utils::{HashMap, HashSet, Instant},
 };
 use libloading::Library;
@@ -283,7 +282,7 @@ fn serialize_reloadable_component<C: ReloadableComponent>(
     let name = C::get_type_name();
     for (entity, component) in query.iter() {
         if let Ok(v) = rmp_serde::to_vec(component) {
-            let mut storage = store.map.entry(name.to_string()).or_default();
+            let storage = store.map.entry(name.to_string()).or_default();
             storage.push((entity, v));
         }
 

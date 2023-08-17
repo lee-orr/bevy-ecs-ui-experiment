@@ -1,5 +1,3 @@
-use std::{default, ops::Mul};
-
 use bevy::{prelude::*, winit::WinitPlugin};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use hot_reload::{

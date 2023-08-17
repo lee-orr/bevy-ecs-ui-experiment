@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use bevy::ecs::prelude::*;
 
-use bevy::prelude::{App, First, Plugin, PreStartup, PreUpdate};
+use bevy::prelude::{App, First, Plugin, PreStartup};
 
 use bevy::utils::Instant;
 
