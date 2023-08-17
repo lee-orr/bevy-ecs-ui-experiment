@@ -15,7 +15,7 @@ pub fn bevy_main(reload: HotReloadPlugin) {
         .add_plugins(WorldInspectorPlugin::new())
         .add_plugins(reload)
         .add_systems(Startup, setup)
-        .add_reloadables::<reloadable>();
+        .setup_reloadable_elements::<reloadable>();
 
     println!("Run App: {:?}", std::thread::current().id());
 
@@ -32,7 +32,7 @@ pub enum AppState {
 #[hot_reload_setup]
 fn reloadable(app: &mut ReloadableAppContents) {
     app.add_systems(Update, (move_cube, toggle))
-        .insert_reloadable_resource::<VelocityMultiplier>()
+        .insert_replacable_resource::<VelocityMultiplier>()
         .reset_setup::<Cube, _>(setup_cube)
         .reset_setup_in_state::<Sphere, AppState, _>(AppState::AnotherState, setup_sphere);
 }
@@ -46,7 +46,7 @@ impl Default for Cube {
     }
 }
 
-impl ReloadableComponent for Cube {
+impl ReplacableComponent for Cube {
     fn get_type_name() -> &'static str {
         "cube"
     }
@@ -64,7 +64,7 @@ impl Default for VelocityMultiplier {
     }
 }
 
-impl ReloadableResource for VelocityMultiplier {
+impl ReplacableResource for VelocityMultiplier {
     fn get_type_name() -> &'static str {
         "VelocityMultiplier"
     }
@@ -105,7 +105,7 @@ fn setup_sphere(
         Sphere,
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::UVSphere {
-                radius: 0.8,
+                radius: 0.1,
                 ..Default::default()
             })),
             material: materials.add(Color::ORANGE.into()),

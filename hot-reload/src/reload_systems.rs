@@ -5,7 +5,7 @@ use bevy::{
 
 use crate::{
     hot_reload_internal::InternalHotReload, update_lib, CleanupReloaded, DeserializeReloadables,
-    HotReload, HotReloadEvent, OnReloadComplete, ReloadableAppCleanup, ReloadableAppContents,
+    HotReload, HotReloadEvent, OnReloadComplete, ReloadableAppCleanupData, ReloadableAppContents,
     ReloadableSchedule, ReloadableSetup, SerializeReloadables, SetupReload,
 };
 
@@ -66,7 +66,7 @@ pub fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut 
         };
         println!("setup default");
 
-        T::default_function(&mut reloadable);
+        T::default_function(reloadable.as_mut());
         return;
     };
     let lib = lib.clone();
@@ -76,7 +76,7 @@ pub fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut 
             return;
         };
         println!("setup default");
-        T::default_function(&mut reloadable);
+        T::default_function(reloadable.as_mut());
         return;
     };
 
@@ -106,7 +106,7 @@ pub fn register_schedules(world: &mut World) {
 
     println!("Has schedules resource");
 
-    let mut inner = ReloadableAppCleanup::default();
+    let mut inner = ReloadableAppCleanupData::default();
 
     for (original, schedule) in reloadable.schedule_iter() {
         let label = ReloadableSchedule::new(original.clone());
@@ -136,7 +136,7 @@ pub fn register_schedules(world: &mut World) {
 pub fn cleanup(
     mut commands: Commands,
     mut schedules: ResMut<Schedules>,
-    reloadable: Res<ReloadableAppCleanup>,
+    reloadable: Res<ReloadableAppCleanupData>,
 ) {
     for schedule in reloadable.labels.iter() {
         println!("Attempting cleanup for {schedule:?}");

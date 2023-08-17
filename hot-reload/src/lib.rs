@@ -3,6 +3,8 @@ mod lib_set;
 mod library_holder;
 mod reload_systems;
 mod reloadable_app_setup;
+mod replacable_types;
+mod schedules;
 mod types;
 mod update_lib;
 mod watch;
@@ -27,6 +29,9 @@ pub use reloadable_app_setup::*;
 
 use crate::hot_reload_internal::InternalHotReload;
 use crate::reload_systems::{cleanup, reload, update_lib_system};
+pub use crate::replacable_types::{ReplacableComponent, ReplacableResource};
+use crate::replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
+use crate::schedules::*;
 use crate::update_lib::get_initial_library;
 use crate::watch::{run_watcher, EndWatch};
 
@@ -88,9 +93,9 @@ impl Plugin for HotReloadPlugin {
             .add_schedule(OnReloadComplete, reload_complete)
             .init_resource::<HotReload>()
             .init_resource::<ReloadableAppContents>()
-            .init_resource::<ReloadableAppCleanup>()
-            .init_resource::<ReloadableResourceStore>()
-            .init_resource::<ReloadableComponentStore>()
+            .init_resource::<ReloadableAppCleanupData>()
+            .init_resource::<ReplacableResourceStore>()
+            .init_resource::<ReplacableComponentStore>()
             .add_event::<HotReloadEvent>()
             .insert_resource(InternalHotReload {
                 library: None,
