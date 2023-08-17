@@ -13,5 +13,5 @@ crate-type = ["rlib", "dylib"]
 
 bevy = { version = "0.11" }
 bevy-inspector-egui = "*"
-hot-reload = { path = "../hot-reload", features = [] }
+hot-reload = { path = "../hot-reload", features = ["hot"] }
 serde = "*"

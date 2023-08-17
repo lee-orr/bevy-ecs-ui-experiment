@@ -42,21 +42,38 @@ pub fn hot_reload_setup(_attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
+#[allow(clippy::needless_return)]
 pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let ast: ItemFn = parse_macro_input!(item as ItemFn);
 
     let fn_name: &proc_macro2::Ident = &ast.sig.ident;
-    quote! {
-        pub fn #fn_name(options: hot_reload::HotReloadOptions) {
-            hot_reload::run_reloadabe_app(options);
-        }
 
-        #[no_mangle]
-        pub fn hot_reload_internal_main(plugin: hot_reload::HotReloadPlugin) {
-            #ast
+    #[cfg(feature = "hot")]
+    {
+        return quote! {
+            pub fn #fn_name(options: hot_reload::HotReloadOptions) {
+                hot_reload::run_reloadabe_app(options);
+            }
 
-            #fn_name(plugin);
+            #[no_mangle]
+            pub fn hot_reload_internal_main(plugin: hot_reload::HotReloadPlugin) {
+                #ast
+
+                #fn_name(plugin);
+            }
         }
+        .into();
     }
-    .into()
+
+    #[cfg(not(feature = "hot"))]
+    {
+        return quote! {
+            pub fn #fn_name(options: hot_reload::HotReloadOptions) {
+                #ast
+
+                #fn_name(HotReloadPlugin);
+            }
+        }
+        .into();
+    }
 }

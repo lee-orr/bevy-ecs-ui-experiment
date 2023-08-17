@@ -12,9 +12,6 @@ pub struct SetupReload;
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct CleanupReloaded;
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct OnReloadComplete;
-
-#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct ReloadableSchedule<T: ScheduleLabel>(T);
 
 impl<T: ScheduleLabel> ReloadableSchedule<T> {

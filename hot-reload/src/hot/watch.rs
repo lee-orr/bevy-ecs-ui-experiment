@@ -1,6 +1,6 @@
 use std::thread;
 
-use crate::lib_set::LibPathSet;
+use crate::hot::lib_set::LibPathSet;
 
 pub struct EndWatch;
 

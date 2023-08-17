@@ -4,13 +4,7 @@ use bevy::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 
-pub trait ReplacableResource: Resource + Serialize + DeserializeOwned + Default {
-    fn get_type_name() -> &'static str;
-}
-
-pub trait ReplacableComponent: Component + Serialize + DeserializeOwned + Default {
-    fn get_type_name() -> &'static str;
-}
+use crate::{ReplacableComponent, ReplacableResource};
 
 #[derive(Resource, Default)]
 pub struct ReplacableResourceStore {

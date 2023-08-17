@@ -8,13 +8,17 @@ use bevy::{
 };
 
 use crate::{
-    reload_systems::{clear_marked_system, hot_reload_occured},
-    replacable_types::{
-        deserialize_replacable_component, deserialize_replacable_resource,
-        serialize_replacable_component, serialize_replacable_resource,
+    clear_marked_system,
+    hot::{
+        reload_systems::hot_reload_occured,
+        replacable_types::{
+            deserialize_replacable_component, deserialize_replacable_resource,
+            serialize_replacable_component, serialize_replacable_resource,
+        },
+        schedules::{CleanupReloaded, DeserializeReloadables, SerializeReloadables},
+        ReplacableComponent, ReplacableResource,
     },
-    schedules::{CleanupReloaded, DeserializeReloadables, OnReloadComplete, SerializeReloadables},
-    ReplacableComponent, ReplacableResource,
+    OnReloadComplete,
 };
 
 #[derive(Default, Resource, Clone, Debug)]
@@ -29,39 +33,15 @@ pub struct ReloadableAppContents {
     components: HashSet<String>,
 }
 
-mod private {
-    pub trait ReloadableAppSealed {}
-}
-
-pub trait ReloadableApp: private::ReloadableAppSealed {
-    fn add_systems<M, L: ScheduleLabel + Eq + ::std::hash::Hash + Clone>(
-        &mut self,
-        schedule: L,
-        systems: impl IntoSystemConfigs<M>,
-    ) -> &mut Self;
-
-    fn insert_replacable_resource<R: ReplacableResource>(&mut self) -> &mut Self;
-    fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self;
-    fn reset_resource_to_value<R: Resource + Clone>(&mut self, value: R) -> &mut Self;
-    fn register_replacable_component<C: ReplacableComponent>(&mut self) -> &mut Self;
-    fn clear_marked_on_reload<C: Component>(&mut self) -> &mut Self;
-    fn reset_setup<C: Component, M>(&mut self, systems: impl IntoSystemConfigs<M>) -> &mut Self;
-    fn reset_setup_in_state<C: Component, S: States, M>(
-        &mut self,
-        state: S,
-        systems: impl IntoSystemConfigs<M>,
-    ) -> &mut Self;
-}
-
 impl ReloadableAppContents {
     pub(crate) fn schedule_iter(self) -> impl Iterator<Item = (Box<dyn ScheduleLabel>, Schedule)> {
         self.schedules.into_iter()
     }
 }
 
-impl private::ReloadableAppSealed for ReloadableAppContents {}
+impl crate::private::ReloadableAppSealed for ReloadableAppContents {}
 
-impl ReloadableApp for ReloadableAppContents {
+impl crate::ReloadableApp for ReloadableAppContents {
     fn add_systems<M, L: ScheduleLabel + Eq + ::std::hash::Hash + Clone>(
         &mut self,
         schedule: L,

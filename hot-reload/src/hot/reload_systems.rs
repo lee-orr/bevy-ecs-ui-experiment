@@ -7,9 +7,13 @@ use bevy::{
 };
 
 use crate::{
-    hot_reload_internal::InternalHotReload, update_lib, CleanupReloaded, DeserializeReloadables,
-    HotReload, HotReloadEvent, OnReloadComplete, ReloadableAppCleanupData, ReloadableAppContents,
-    ReloadableSchedule, ReloadableSetup, SerializeReloadables, SetupReload,
+    hot::{
+        hot_reload_internal::InternalHotReload, update_lib, CleanupReloaded,
+        DeserializeReloadables, HotReload, HotReloadEvent, ReloadableAppCleanupData,
+        ReloadableAppContents, ReloadableSchedule, ReloadableSetup, SerializeReloadables,
+        SetupReload,
+    },
+    OnReloadComplete,
 };
 
 pub fn update_lib_system(
@@ -153,12 +157,6 @@ pub fn cleanup(
 
     commands.insert_resource(ReloadableAppContents::default());
     println!("Cleanup complete");
-}
-
-pub fn clear_marked_system<C: Component>(mut commands: Commands, q: Query<Entity, With<C>>) {
-    for entity in q.iter() {
-        commands.entity(entity).despawn_recursive();
-    }
 }
 
 pub fn hot_reload_occured(reload: Res<InternalHotReload>) -> bool {

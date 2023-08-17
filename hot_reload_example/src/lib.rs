@@ -1,9 +1,6 @@
 use bevy::{prelude::*, winit::WinitPlugin};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use hot_reload::{
-    reload_macros::{hot_bevy_main, hot_reload_setup},
-    *,
-};
+use hot_reload::{hot_bevy_main, hot_reload_setup, *};
 use serde::{Deserialize, Serialize};
 
 #[hot_bevy_main]
@@ -31,6 +28,7 @@ pub enum AppState {
 
 #[hot_reload_setup]
 fn reloadable(app: &mut ReloadableAppContents) {
+    println!("Setting up reloadables");
     app.add_systems(Update, (move_cube, toggle))
         .insert_replacable_resource::<VelocityMultiplier>()
         .reset_setup::<Cube, _>(setup_cube)
@@ -42,7 +40,7 @@ struct Cube(Vec3);
 
 impl Default for Cube {
     fn default() -> Self {
-        Self(Vec3::NEG_X * 2.)
+        Self(Vec3::NEG_X * 1.)
     }
 }
 
