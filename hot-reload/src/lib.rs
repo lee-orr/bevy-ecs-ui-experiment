@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use bevy::ecs::prelude::*;
 
-use bevy::prelude::{App, Plugin, PreStartup, PreUpdate};
+use bevy::prelude::{App, First, Plugin, PreStartup, PreUpdate};
 
 use bevy::utils::Instant;
 
@@ -174,16 +174,19 @@ impl Plugin for HotReloadPlugin {
         let cleanup_schedule = Schedule::new();
         let serialize_schedule = Schedule::new();
         let deserialize_schedule = Schedule::new();
+        let reload_complete = Schedule::new();
 
         app.add_plugins(HotWinitPlugin)
             .add_schedule(SetupReload, reload_schedule)
             .add_schedule(CleanupReloaded, cleanup_schedule)
             .add_schedule(SerializeReloadables, serialize_schedule)
             .add_schedule(DeserializeReloadables, deserialize_schedule)
+            .add_schedule(OnReloadComplete, reload_complete)
             .init_resource::<HotReload>()
             .init_resource::<ReloadableAppContents>()
             .init_resource::<ReloadableAppCleanup>()
             .init_resource::<ReloadableResourceStore>()
+            .init_resource::<ReloadableComponentStore>()
             .add_event::<HotReloadEvent>()
             .insert_resource(InternalHotReload {
                 library: None,
@@ -194,7 +197,7 @@ impl Plugin for HotReloadPlugin {
             })
             .add_systems(PreStartup, reload)
             .add_systems(CleanupReloaded, cleanup)
-            .add_systems(PreUpdate, (update_lib_system, reload).chain());
+            .add_systems(First, (update_lib_system, reload).chain());
         println!("Finished build");
     }
 }
@@ -328,4 +331,5 @@ fn reload(world: &mut World) {
     println!("Deserialize...");
     let _ = world.try_run_schedule(DeserializeReloadables);
     println!("reload complete");
+    let _ = world.try_run_schedule(OnReloadComplete);
 }

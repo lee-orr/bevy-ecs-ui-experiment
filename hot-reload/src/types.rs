@@ -9,6 +9,8 @@ use bevy::{
 use libloading::Library;
 use serde::{de::DeserializeOwned, Serialize};
 
+use crate::InternalHotReload;
+
 #[derive(Resource, Default, Reflect)]
 pub struct HotReload {
     pub last_updated_frame: usize,
@@ -37,6 +39,7 @@ pub(crate) struct ReloadableAppCleanup {
 pub struct ReloadableAppContents {
     schedules: HashMap<Box<dyn ScheduleLabel>, Schedule>,
     resources: HashSet<String>,
+    components: HashSet<String>,
 }
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
@@ -68,6 +71,14 @@ pub trait ReloadableApp: private::ReloadableAppSealed {
     fn insert_reloadable_resource<R: ReloadableResource>(&mut self) -> &mut Self;
     fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self;
     fn reset_resource_to_value<R: Resource + Clone>(&mut self, value: R) -> &mut Self;
+    fn register_reloadable_component<C: ReloadableComponent>(&mut self) -> &mut Self;
+    fn clear_marked_on_reload<C: Component>(&mut self) -> &mut Self;
+    fn reset_setup<C: Component, M>(&mut self, systems: impl IntoSystemConfigs<M>) -> &mut Self;
+    fn reset_setup_in_state<C: Component, S: States, M>(
+        &mut self,
+        state: S,
+        systems: impl IntoSystemConfigs<M>,
+    ) -> &mut Self;
 }
 
 impl ReloadableAppContents {
@@ -111,6 +122,19 @@ impl ReloadableApp for ReloadableAppContents {
         self
     }
 
+    fn register_reloadable_component<C: ReloadableComponent>(&mut self) -> &mut Self {
+        let name = C::get_type_name();
+        if !self.components.contains(name) {
+            self.components.insert(name.to_string());
+            self.add_systems(SerializeReloadables, serialize_reloadable_component::<C>)
+                .add_systems(
+                    DeserializeReloadables,
+                    deserialize_reloadable_component::<C>,
+                );
+        }
+        self
+    }
+
     fn reset_resource<R: Resource + Default>(&mut self) -> &mut Self {
         println!("resetting resource");
         self.add_systems(DeserializeReloadables, |mut commands: Commands| {
@@ -126,41 +150,31 @@ impl ReloadableApp for ReloadableAppContents {
         });
         self
     }
-}
 
-#[derive(Resource, Default)]
-pub struct ReloadableResourceStore {
-    map: HashMap<String, Vec<u8>>,
-}
-
-fn serialize_reloadable_resource<R: ReloadableResource>(
-    mut store: ResMut<ReloadableResourceStore>,
-    resource: Option<Res<R>>,
-    mut commands: Commands,
-) {
-    let Some(resource) = resource else {
-        return;
-    };
-    if let Ok(v) = rmp_serde::to_vec(resource.as_ref()) {
-        store.map.insert(R::get_type_name().to_string(), v);
+    fn clear_marked_on_reload<C: Component>(&mut self) -> &mut Self {
+        self.add_systems(CleanupReloaded, clear_marked_system::<C>);
+        self
     }
 
-    commands.remove_resource::<R>();
-}
+    fn reset_setup<C: Component, M>(&mut self, systems: impl IntoSystemConfigs<M>) -> &mut Self {
+        self.add_systems(CleanupReloaded, clear_marked_system::<C>)
+            .add_systems(OnReloadComplete, systems)
+    }
 
-fn deserialize_reloadable_resource<R: ReloadableResource>(
-    store: ResMut<ReloadableResourceStore>,
-    mut commands: Commands,
-) {
-    let name = R::get_type_name();
-    println!("Deserializing {name}");
-    let v: R = store
-        .map
-        .get(name)
-        .and_then(|v| rmp_serde::from_slice(v.as_slice()).ok())
-        .unwrap_or_default();
-
-    commands.insert_resource(v);
+    fn reset_setup_in_state<C: Component, S: States, M>(
+        &mut self,
+        state: S,
+        systems: impl IntoSystemConfigs<M>,
+    ) -> &mut Self {
+        self.add_systems(CleanupReloaded, clear_marked_system::<C>)
+            .add_systems(
+                PreUpdate,
+                systems.run_if(
+                    in_state(state)
+                        .and_then(hot_reload_occured.or_else(resource_changed::<State<S>>())),
+                ),
+            )
+    }
 }
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
@@ -174,6 +188,8 @@ pub struct SetupReload;
 
 #[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct CleanupReloaded;
+#[derive(ScheduleLabel, Debug, PartialEq, Eq, Hash, Clone)]
+pub struct OnReloadComplete;
 
 pub trait ReloadableSetup {
     fn setup_function_name() -> &'static str;
@@ -213,4 +229,89 @@ impl LibraryHolder {
 
 pub trait ReloadableResource: Resource + Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;
+}
+
+pub trait ReloadableComponent: Component + Serialize + DeserializeOwned + Default {
+    fn get_type_name() -> &'static str;
+}
+
+#[derive(Resource, Default)]
+pub struct ReloadableResourceStore {
+    map: HashMap<String, Vec<u8>>,
+}
+
+fn serialize_reloadable_resource<R: ReloadableResource>(
+    mut store: ResMut<ReloadableResourceStore>,
+    resource: Option<Res<R>>,
+    mut commands: Commands,
+) {
+    let Some(resource) = resource else {
+        return;
+    };
+    if let Ok(v) = rmp_serde::to_vec(resource.as_ref()) {
+        store.map.insert(R::get_type_name().to_string(), v);
+    }
+
+    commands.remove_resource::<R>();
+}
+
+fn deserialize_reloadable_resource<R: ReloadableResource>(
+    store: Res<ReloadableResourceStore>,
+    mut commands: Commands,
+) {
+    let name = R::get_type_name();
+    println!("Deserializing {name}");
+    let v: R = store
+        .map
+        .get(name)
+        .and_then(|v| rmp_serde::from_slice(v.as_slice()).ok())
+        .unwrap_or_default();
+
+    commands.insert_resource(v);
+}
+
+#[derive(Resource, Default)]
+pub struct ReloadableComponentStore {
+    map: HashMap<String, Vec<(Entity, Vec<u8>)>>,
+}
+
+fn serialize_reloadable_component<C: ReloadableComponent>(
+    mut store: ResMut<ReloadableComponentStore>,
+    query: Query<(Entity, &C)>,
+    mut commands: Commands,
+) {
+    let name = C::get_type_name();
+    for (entity, component) in query.iter() {
+        if let Ok(v) = rmp_serde::to_vec(component) {
+            let mut storage = store.map.entry(name.to_string()).or_default();
+            storage.push((entity, v));
+        }
+
+        commands.entity(entity).remove::<C>();
+    }
+}
+
+fn deserialize_reloadable_component<C: ReloadableComponent>(
+    mut store: ResMut<ReloadableComponentStore>,
+    mut commands: Commands,
+) {
+    let name = C::get_type_name();
+    println!("Deserializing {name}");
+
+    if let Some(storage) = store.map.remove(name) {
+        for (entity, value) in storage.into_iter() {
+            let v: C = rmp_serde::from_slice(&value).ok().unwrap_or_default();
+            commands.entity(entity).insert(v);
+        }
+    }
+}
+
+pub fn clear_marked_system<C: Component>(mut commands: Commands, q: Query<Entity, With<C>>) {
+    for entity in q.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+
+fn hot_reload_occured(reload: Res<InternalHotReload>) -> bool {
+    reload.updated_this_frame
 }

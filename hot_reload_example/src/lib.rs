@@ -1,4 +1,4 @@
-use std::ops::Mul;
+use std::{default, ops::Mul};
 
 use bevy::{prelude::*, winit::WinitPlugin};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -6,12 +6,14 @@ use hot_reload::{
     reload_macros::{hot_bevy_main, hot_reload_setup},
     *,
 };
+use serde::{Deserialize, Serialize};
 
 #[hot_bevy_main]
 pub fn bevy_main(reload: HotReloadPlugin) {
     println!("Creating app");
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins.build().disable::<WinitPlugin>())
+    app.add_state::<State>()
+        .add_plugins(DefaultPlugins.build().disable::<WinitPlugin>())
         .add_plugins(WorldInspectorPlugin::new())
         .add_plugins(reload)
         .add_systems(Startup, setup)
@@ -22,14 +24,33 @@ pub fn bevy_main(reload: HotReloadPlugin) {
     app.run();
 }
 
+#[derive(States, PartialEq, Eq, Clone, Copy, Debug, Hash, Default)]
+pub enum State {
+    #[default]
+    State,
+}
+
 #[hot_reload_setup]
 fn reloadable(app: &mut ReloadableAppContents) {
     app.add_systems(Update, move_cube)
-        .insert_reloadable_resource::<VelocityMultiplier>();
+        .insert_reloadable_resource::<VelocityMultiplier>()
+        .reset_setup::<Cube, _>(setup_cube);
 }
 
-#[derive(Component)]
-struct Cube;
+#[derive(Component, Serialize, Deserialize)]
+struct Cube(Vec3);
+
+impl Default for Cube {
+    fn default() -> Self {
+        Self(Vec3::NEG_X * 2.)
+    }
+}
+
+impl ReloadableComponent for Cube {
+    fn get_type_name() -> &'static str {
+        "cube"
+    }
+}
 
 #[derive(Resource, serde::Serialize, serde::Deserialize, Debug)]
 struct VelocityMultiplier(Vec3);
@@ -46,6 +67,32 @@ impl ReloadableResource for VelocityMultiplier {
     }
 }
 
+fn setup_cube(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    // cube
+    commands.spawn((
+        Cube::default(),
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+            transform: Transform::from_xyz(0.0, 0.5, 0.0),
+            ..default()
+        },
+    ));
+    commands.spawn((
+        Cube(Vec3::X * 2.),
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+            material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+            transform: Transform::from_xyz(0.0, 0.5, 0.0),
+            ..default()
+        },
+    ));
+}
+
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -57,16 +104,6 @@ fn setup(
         material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
         ..default()
     });
-    // cube
-    commands.spawn((
-        Cube,
-        PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
-            transform: Transform::from_xyz(0.0, 0.5, 0.0),
-            ..default()
-        },
-    ));
     // light
     commands.spawn(PointLightBundle {
         point_light: PointLight {
@@ -85,7 +122,7 @@ fn setup(
 }
 
 fn move_cube(
-    mut cubes: Query<&mut Transform, With<Cube>>,
+    mut cubes: Query<(&mut Transform, &Cube)>,
     time: Res<Time>,
     multiplier: Res<VelocityMultiplier>,
 ) {
@@ -96,7 +133,7 @@ fn move_cube(
         z: position.z.sin(),
     };
 
-    for mut cube in cubes.iter_mut() {
-        cube.translation = position;
+    for (mut transform, base) in cubes.iter_mut() {
+        transform.translation = position + base.0;
     }
 }
