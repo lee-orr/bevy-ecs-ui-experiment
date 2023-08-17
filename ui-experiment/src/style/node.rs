@@ -37,10 +37,6 @@ pub trait Layout: StyleComponentApplier<Style> + Sized {
         self.get_component(move |v| v.justify_content = val)
     }
 
-    fn position(self, val: UiRect) -> Self {
-        self.get_component(move |v| v.position = val)
-    }
-
     fn margin(self, val: UiRect) -> Self {
         self.get_component(move |v| v.margin = val)
     }
@@ -65,16 +61,28 @@ pub trait Layout: StyleComponentApplier<Style> + Sized {
         self.get_component(move |v| v.flex_basis = val)
     }
 
-    fn size(self, val: Size) -> Self {
-        self.get_component(move |v| v.size = val)
+    fn width(self, val: Val) -> Self {
+        self.get_component(move |v: &mut Style| v.width = val)
     }
 
-    fn min_size(self, val: Size) -> Self {
-        self.get_component(move |v| v.min_size = val)
+    fn min_width(self, val: Val) -> Self {
+        self.get_component(move |v: &mut Style| v.min_width = val)
     }
 
-    fn max_size(self, val: Size) -> Self {
-        self.get_component(move |v| v.max_size = val)
+    fn max_width(self, val: Val) -> Self {
+        self.get_component(move |v: &mut Style| v.max_width = val)
+    }
+
+    fn height(self, val: Val) -> Self {
+        self.get_component(move |v: &mut Style| v.height = val)
+    }
+
+    fn min_height(self, val: Val) -> Self {
+        self.get_component(move |v: &mut Style| v.min_height = val)
+    }
+
+    fn max_height(self, val: Val) -> Self {
+        self.get_component(move |v: &mut Style| v.max_height = val)
     }
 
     fn aspect_ratio(self, val: Option<f32>) -> Self {
@@ -84,8 +92,11 @@ pub trait Layout: StyleComponentApplier<Style> + Sized {
     fn overflow(self, val: Overflow) -> Self {
         self.get_component(move |v| v.overflow = val)
     }
-    fn gap(self, val: Size) -> Self {
-        self.get_component(move |v| v.gap = val)
+    fn row_gap(self, val: Val) -> Self {
+        self.get_component(move |v| v.row_gap = val)
+    }
+    fn column_gap(self, val: Val) -> Self {
+        self.get_component(move |v| v.column_gap = val)
     }
 }
 

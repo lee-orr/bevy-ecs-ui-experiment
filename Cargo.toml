@@ -1,15 +1,9 @@
-[package]
-name = "bevy-ecs-ui-experiment"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-bevy = { version = "0.10", default-features = false, features = ["bevy_ui", "bevy_text", "bevy_render", "bevy_asset"]}
-tuple_utils = "*"
-
-[dev-dependencies]
-
-bevy = { version = "0.10", default-features = true}
-bevy-inspector-egui = "*"
+[workspace]
+resolver = "2"
+members = [
+    "ui-experiment",
+    "reload-macros",
+    "hot-reload",
+    "hot_reload_example",
+    "bevy_hot_winit",
+]

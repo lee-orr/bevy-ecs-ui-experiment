@@ -3,15 +3,23 @@
 	"tasks": [
 		{
 			"type": "shell",
-			"command": "cargo run --example simple",
+			"command": "cargo run -p ui-experiment --example simple",
 			"problemMatcher": [
 				"$rustc"
 			],
-			"label": "Simple"
+			"label": "Simple UI"
 		},
 		{
 			"type": "shell",
-			"command": "cargo clippy --fix --allow-dirty && cargo fmt",
+			"command": "cargo run -p hot_reload_example",
+			"problemMatcher": [
+				"$rustc"
+			],
+			"label": "Simple Hot Reload"
+		},
+		{
+			"type": "shell",
+			"command": "cargo clippy --all-features --fix --allow-dirty && cargo fmt",
 			"label": "Clippy & Fmt"
 		}
 	]

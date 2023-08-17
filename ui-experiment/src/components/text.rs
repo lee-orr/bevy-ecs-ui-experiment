@@ -1,75 +1,100 @@
 use bevy::{
-    prelude::{Bundle, Component, ImageBundle, Mut, Visibility},
-    ui::{BackgroundColor, FocusPolicy, Style, UiImage, ZIndex},
+    prelude::{Bundle, Component, Mut, TextBundle, Visibility},
+    text::Text,
+    ui::{BackgroundColor, FocusPolicy, Style, ZIndex},
 };
 
 use crate::{style::StyleComponentApplier, UIQuery, UiBundleGeneratorStyler};
 
-pub type ImageComponents<'a> = (
+pub type TextComponents<'a> = (
     &'a mut Style,
     &'a mut BackgroundColor,
     &'a mut FocusPolicy,
     &'a mut ZIndex,
     &'a mut Visibility,
-    &'a mut UiImage,
+    &'a mut Text,
 );
 
-pub type ImageQuery<'w, 's, 'a, T> = UIQuery<'w, 's, 'a, T, ImageComponents<'a>, ImageNode>;
+pub type TextQuery<'w, 's, 'a, T> = UIQuery<'w, 's, 'a, T, TextComponents<'a>, TextNode>;
 
 #[derive(Component, Clone, Default)]
-pub struct ImageNode;
+pub struct TextNode;
 
-#[derive(Bundle, Clone, Default)]
-pub struct UiImageBundle {
-    pub node_bundle: ImageBundle,
-    pub marker: ImageNode,
+#[derive(Bundle, Default)]
+pub struct UiTextBundle {
+    pub node_bundle: TextBundle,
+    pub marker: TextNode,
 }
 
-impl StyleComponentApplier<BackgroundColor> for UiImageBundle {
+impl Clone for UiTextBundle {
+    fn clone(&self) -> Self {
+        Self {
+            node_bundle: TextBundle {
+                node: self.node_bundle.node,
+                style: self.node_bundle.style.clone(),
+                calculated_size: Default::default(),
+                background_color: self.node_bundle.background_color,
+                focus_policy: self.node_bundle.focus_policy,
+                transform: self.node_bundle.transform,
+                global_transform: self.node_bundle.global_transform,
+                visibility: self.node_bundle.visibility,
+                computed_visibility: self.node_bundle.computed_visibility.clone(),
+                z_index: self.node_bundle.z_index,
+                text: self.node_bundle.text.clone(),
+                text_layout_info: self.node_bundle.text_layout_info.clone(),
+                text_flags: self.node_bundle.text_flags.clone(),
+            },
+            marker: self.marker.clone(),
+        }
+    }
+}
+
+impl StyleComponentApplier<BackgroundColor> for UiTextBundle {
     fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {
         apply(&mut self.node_bundle.background_color);
         self
     }
 }
 
-impl StyleComponentApplier<Style> for UiImageBundle {
+impl StyleComponentApplier<Style> for UiTextBundle {
     fn get_component<T: FnMut(&mut Style)>(mut self, mut apply: T) -> Self {
         apply(&mut self.node_bundle.style);
         self
     }
 }
 
-impl StyleComponentApplier<FocusPolicy> for UiImageBundle {
+impl StyleComponentApplier<FocusPolicy> for UiTextBundle {
     fn get_component<T: FnMut(&mut FocusPolicy)>(mut self, mut apply: T) -> Self {
         apply(&mut self.node_bundle.focus_policy);
         self
     }
 }
 
-impl StyleComponentApplier<ZIndex> for UiImageBundle {
+impl StyleComponentApplier<ZIndex> for UiTextBundle {
     fn get_component<T: FnMut(&mut ZIndex)>(mut self, mut apply: T) -> Self {
         apply(&mut self.node_bundle.z_index);
         self
     }
 }
 
-impl StyleComponentApplier<Visibility> for UiImageBundle {
+impl StyleComponentApplier<Visibility> for UiTextBundle {
     fn get_component<T: FnMut(&mut Visibility)>(mut self, mut apply: T) -> Self {
         apply(&mut self.node_bundle.visibility);
         self
     }
 }
 
-impl StyleComponentApplier<UiImage> for UiImageBundle {
-    fn get_component<T: FnMut(&mut UiImage)>(mut self, mut apply: T) -> Self {
-        apply(&mut self.node_bundle.image);
+impl StyleComponentApplier<Text> for UiTextBundle {
+    fn get_component<T: FnMut(&mut Text)>(mut self, mut apply: T) -> Self {
+        apply(&mut self.node_bundle.text);
         self
     }
 }
 
-impl UiBundleGeneratorStyler for UiImageBundle {
+impl UiBundleGeneratorStyler for UiTextBundle {
     fn apply_styler<S: crate::Styler>(self, styler: &S) -> Self {
-        styler.style(self)
+        let s = styler.text_style(self);
+        styler.style(s)
     }
 }
 
@@ -80,7 +105,7 @@ impl<'a> StyleComponentApplier<BackgroundColor>
         Mut<'a, FocusPolicy>,
         Mut<'a, ZIndex>,
         Mut<'a, Visibility>,
-        Mut<'a, UiImage>,
+        Mut<'a, Text>,
     )
 {
     fn get_component<T: FnMut(&mut BackgroundColor)>(mut self, mut apply: T) -> Self {
@@ -96,7 +121,7 @@ impl<'a> StyleComponentApplier<Style>
         Mut<'a, FocusPolicy>,
         Mut<'a, ZIndex>,
         Mut<'a, Visibility>,
-        Mut<'a, UiImage>,
+        Mut<'a, Text>,
     )
 {
     fn get_component<T: FnMut(&mut Style)>(mut self, mut apply: T) -> Self {
@@ -112,7 +137,7 @@ impl<'a> StyleComponentApplier<FocusPolicy>
         Mut<'a, FocusPolicy>,
         Mut<'a, ZIndex>,
         Mut<'a, Visibility>,
-        Mut<'a, UiImage>,
+        Mut<'a, Text>,
     )
 {
     fn get_component<T: FnMut(&mut FocusPolicy)>(mut self, mut apply: T) -> Self {
@@ -128,7 +153,7 @@ impl<'a> StyleComponentApplier<ZIndex>
         Mut<'a, FocusPolicy>,
         Mut<'a, ZIndex>,
         Mut<'a, Visibility>,
-        Mut<'a, UiImage>,
+        Mut<'a, Text>,
     )
 {
     fn get_component<T: FnMut(&mut ZIndex)>(mut self, mut apply: T) -> Self {
@@ -144,7 +169,7 @@ impl<'a> StyleComponentApplier<Visibility>
         Mut<'a, FocusPolicy>,
         Mut<'a, ZIndex>,
         Mut<'a, Visibility>,
-        Mut<'a, UiImage>,
+        Mut<'a, Text>,
     )
 {
     fn get_component<T: FnMut(&mut Visibility)>(mut self, mut apply: T) -> Self {
@@ -153,17 +178,17 @@ impl<'a> StyleComponentApplier<Visibility>
     }
 }
 
-impl<'a> StyleComponentApplier<UiImage>
+impl<'a> StyleComponentApplier<Text>
     for (
         Mut<'a, Style>,
         Mut<'a, BackgroundColor>,
         Mut<'a, FocusPolicy>,
         Mut<'a, ZIndex>,
         Mut<'a, Visibility>,
-        Mut<'a, UiImage>,
+        Mut<'a, Text>,
     )
 {
-    fn get_component<T: FnMut(&mut UiImage)>(mut self, mut apply: T) -> Self {
+    fn get_component<T: FnMut(&mut Text)>(mut self, mut apply: T) -> Self {
         apply(&mut self.5);
         self
     }
@@ -176,10 +201,11 @@ impl<'a> UiBundleGeneratorStyler
         Mut<'a, FocusPolicy>,
         Mut<'a, ZIndex>,
         Mut<'a, Visibility>,
-        Mut<'a, UiImage>,
+        Mut<'a, Text>,
     )
 {
     fn apply_styler<S: crate::Styler>(self, styler: &S) -> Self {
-        styler.style(self)
+        let s = styler.text_style(self);
+        styler.style(s)
     }
 }

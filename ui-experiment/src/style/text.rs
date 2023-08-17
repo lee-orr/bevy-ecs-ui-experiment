@@ -40,7 +40,7 @@ pub trait TextApplier: StyleComponentApplier<Text> + Sized {
 
     fn set_style(self, value: TextStyle) -> Self {
         self.get_component(move |v| {
-            if let Some(mut last) = v.sections.last_mut() {
+            if let Some(last) = v.sections.last_mut() {
                 last.style = value.clone();
             }
         })
@@ -57,7 +57,7 @@ pub trait TextApplier: StyleComponentApplier<Text> + Sized {
 
     fn text_color(self, value: Color) -> Self {
         self.get_component(move |v| {
-            if let Some(mut last) = v.sections.last_mut() {
+            if let Some(last) = v.sections.last_mut() {
                 last.style.color = value;
             }
         })
@@ -65,7 +65,7 @@ pub trait TextApplier: StyleComponentApplier<Text> + Sized {
 
     fn font_size(self, size: f32) -> Self {
         self.get_component(move |v| {
-            if let Some(mut last) = v.sections.last_mut() {
+            if let Some(last) = v.sections.last_mut() {
                 last.style.font_size = size;
             }
         })
@@ -73,7 +73,7 @@ pub trait TextApplier: StyleComponentApplier<Text> + Sized {
 
     fn font(self, font: Handle<Font>) -> Self {
         self.get_component(move |v| {
-            if let Some(mut last) = v.sections.last_mut() {
+            if let Some(last) = v.sections.last_mut() {
                 last.style.font = font.clone();
             }
         })
