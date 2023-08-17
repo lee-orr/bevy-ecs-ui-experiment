@@ -1,8 +1,5 @@
 use bevy::{
-    prelude::{
-        Commands, Component, DespawnRecursiveExt, Entity, EventWriter, Query, Res, ResMut,
-        Schedule, Schedules, With, World,
-    },
+    prelude::{Commands, EventWriter, Res, ResMut, Schedule, Schedules, World},
     utils::Instant,
 };
 

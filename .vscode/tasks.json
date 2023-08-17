@@ -19,7 +19,7 @@
 		},
 		{
 			"type": "shell",
-			"command": "cargo clippy --fix --allow-dirty && cargo fmt",
+			"command": "cargo clippy --all-features --fix --allow-dirty && cargo fmt",
 			"label": "Clippy & Fmt"
 		}
 	]

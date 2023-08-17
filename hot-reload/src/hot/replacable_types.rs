@@ -1,8 +1,7 @@
 use bevy::{
-    prelude::{Commands, Component, Entity, Query, Res, ResMut, Resource},
+    prelude::{Commands, Entity, Query, Res, ResMut, Resource},
     utils::HashMap,
 };
-use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{ReplacableComponent, ReplacableResource};
 
