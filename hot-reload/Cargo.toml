@@ -19,3 +19,5 @@ crossbeam = "0.8"
 tempfile = "3"
 uuid = "*"
 bevy_hot_winit = { path = "../bevy_hot_winit" }
+serde = "*"
+rmp-serde = "*"

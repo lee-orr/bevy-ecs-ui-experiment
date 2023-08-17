@@ -172,13 +172,18 @@ impl Plugin for HotReloadPlugin {
         );
         let reload_schedule = Schedule::new();
         let cleanup_schedule = Schedule::new();
+        let serialize_schedule = Schedule::new();
+        let deserialize_schedule = Schedule::new();
 
         app.add_plugins(HotWinitPlugin)
             .add_schedule(SetupReload, reload_schedule)
             .add_schedule(CleanupReloaded, cleanup_schedule)
+            .add_schedule(SerializeReloadables, serialize_schedule)
+            .add_schedule(DeserializeReloadables, deserialize_schedule)
             .init_resource::<HotReload>()
-            .init_resource::<ReloadableApp>()
-            .init_resource::<ReloadableAppInner>()
+            .init_resource::<ReloadableAppContents>()
+            .init_resource::<ReloadableAppCleanup>()
+            .init_resource::<ReloadableResourceStore>()
             .add_event::<HotReloadEvent>()
             .insert_resource(InternalHotReload {
                 library: None,
@@ -216,7 +221,7 @@ fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut Worl
 
     let Some(lib) = &internal_state.library else {
         println!("can't get library");
-        let Some(mut reloadable) = world.get_resource_mut::<ReloadableApp>() else {
+        let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
             return;
         };
         println!("setup default");
@@ -227,7 +232,7 @@ fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut Worl
     let lib = lib.clone();
     let Some(lib) = lib.library() else {
         println!("can't access library internals ");
-        let Some(mut reloadable) = world.get_resource_mut::<ReloadableApp>() else {
+        let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
             return;
         };
         println!("setup default");
@@ -235,12 +240,12 @@ fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut Worl
         return;
     };
 
-    let Some(mut reloadable) = world.get_resource_mut::<ReloadableApp>() else {
+    let Some(mut reloadable) = world.get_resource_mut::<ReloadableAppContents>() else {
         println!("no reloadable app");
         return;
     };
     unsafe {
-        let func: libloading::Symbol<unsafe extern "C" fn(&mut ReloadableApp)> = lib
+        let func: libloading::Symbol<unsafe extern "C" fn(&mut ReloadableAppContents)> = lib
             .get(name.as_bytes())
             .unwrap_or_else(|_| panic!("Can't find reloadable setup function",));
         func(&mut reloadable)
@@ -250,7 +255,7 @@ fn setup_reloadable_app<T: ReloadableSetup>(name: &'static str, world: &mut Worl
 
 fn register_schedules(world: &mut World) {
     println!("Reloading schedules");
-    let Some(reloadable) = world.remove_resource::<ReloadableApp>() else {
+    let Some(reloadable) = world.remove_resource::<ReloadableAppContents>() else {
         return;
     };
     println!("Has reloadable app");
@@ -261,9 +266,9 @@ fn register_schedules(world: &mut World) {
 
     println!("Has schedules resource");
 
-    let mut inner = ReloadableAppInner::default();
+    let mut inner = ReloadableAppCleanup::default();
 
-    for (original, schedule) in reloadable.into_iter() {
+    for (original, schedule) in reloadable.schedule_iter() {
         let label = ReloadableSchedule::new(original.clone());
         println!("Adding {label:?} to schedule");
         inner.labels.insert(Box::new(label.clone()));
@@ -284,13 +289,14 @@ fn register_schedules(world: &mut World) {
             }
         }
     }
+
     world.insert_resource(inner);
 }
 
 fn cleanup(
     mut commands: Commands,
     mut schedules: ResMut<Schedules>,
-    reloadable: Res<ReloadableAppInner>,
+    reloadable: Res<ReloadableAppCleanup>,
 ) {
     for schedule in reloadable.labels.iter() {
         println!("Attempting cleanup for {schedule:?}");
@@ -302,7 +308,7 @@ fn cleanup(
     }
     println!("Cleanup almost complete");
 
-    commands.insert_resource(ReloadableApp::default());
+    commands.insert_resource(ReloadableAppContents::default());
     println!("Cleanup complete");
 }
 
@@ -311,7 +317,15 @@ fn reload(world: &mut World) {
     if !internal_state.updated_this_frame {
         return;
     }
+    println!("Serializing...");
+    let _ = world.try_run_schedule(SerializeReloadables);
+    println!("Cleanup...");
     let _ = world.try_run_schedule(CleanupReloaded);
+    println!("Setup...");
     let _ = world.try_run_schedule(SetupReload);
+    println!("Set Schedules...");
     register_schedules(world);
+    println!("Deserialize...");
+    let _ = world.try_run_schedule(DeserializeReloadables);
+    println!("reload complete");
 }

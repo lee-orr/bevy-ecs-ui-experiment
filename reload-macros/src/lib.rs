@@ -18,7 +18,7 @@ pub fn hot_reload_setup(_attr: TokenStream, item: TokenStream) -> TokenStream {
     quote! {
 
         #[no_mangle]
-        pub fn #inner_fn_name(app: &mut ReloadableApp) {
+        pub fn #inner_fn_name(app: &mut ReloadableAppContents) {
             #ast
 
             #fn_name(app);
@@ -32,7 +32,7 @@ pub fn hot_reload_setup(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 #inner_fn_name_str
             }
 
-            fn default_function(app: &mut ReloadableApp) {
+            fn default_function(app: &mut ReloadableAppContents) {
                 #inner_fn_name(app);
             }
         }

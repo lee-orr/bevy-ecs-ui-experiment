@@ -1,3 +1,5 @@
+use std::ops::Mul;
+
 use bevy::{prelude::*, winit::WinitPlugin};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use hot_reload::{
@@ -21,12 +23,28 @@ pub fn bevy_main(reload: HotReloadPlugin) {
 }
 
 #[hot_reload_setup]
-fn reloadable(app: &mut ReloadableApp) {
-    app.add_systems(Update, move_cube);
+fn reloadable(app: &mut ReloadableAppContents) {
+    app.add_systems(Update, move_cube)
+        .insert_reloadable_resource::<VelocityMultiplier>();
 }
 
 #[derive(Component)]
 struct Cube;
+
+#[derive(Resource, serde::Serialize, serde::Deserialize, Debug)]
+struct VelocityMultiplier(Vec3);
+
+impl Default for VelocityMultiplier {
+    fn default() -> Self {
+        Self(Vec3::new(0., 3., 0.))
+    }
+}
+
+impl ReloadableResource for VelocityMultiplier {
+    fn get_type_name() -> &'static str {
+        "VelocityMultiplier"
+    }
+}
 
 fn setup(
     mut commands: Commands,
@@ -66,11 +84,19 @@ fn setup(
     });
 }
 
-fn move_cube(mut cubes: Query<&mut Transform, With<Cube>>, time: Res<Time>) {
-    let x_position = 1. * time.elapsed_seconds().sin();
+fn move_cube(
+    mut cubes: Query<&mut Transform, With<Cube>>,
+    time: Res<Time>,
+    multiplier: Res<VelocityMultiplier>,
+) {
+    let position = time.elapsed_seconds() * multiplier.0;
+    let position = Vec3 {
+        x: position.x.sin(),
+        y: position.y.sin(),
+        z: position.z.sin(),
+    };
 
     for mut cube in cubes.iter_mut() {
-        cube.translation.y = x_position * -1. + 1.;
-        cube.translation.x = x_position * 1.5;
+        cube.translation = position;
     }
 }
