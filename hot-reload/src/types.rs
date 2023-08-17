@@ -196,37 +196,6 @@ pub trait ReloadableSetup {
     fn default_function(app: &mut ReloadableAppContents);
 }
 
-pub struct LibraryHolder(Option<Library>, PathBuf);
-
-impl Drop for LibraryHolder {
-    fn drop(&mut self) {
-        self.0 = None;
-        let _ = std::fs::remove_file(&self.1);
-    }
-}
-
-impl LibraryHolder {
-    pub fn new(path: &PathBuf) -> Option<Self> {
-        let extension = path.extension();
-        let uuid = uuid::Uuid::new_v4();
-        let new_path = path.clone();
-        let mut new_path = new_path.with_file_name(uuid.to_string());
-        if let Some(extension) = extension {
-            new_path.set_extension(extension);
-        }
-        println!("New path: {new_path:?}");
-        std::fs::rename(path, &new_path).ok()?;
-        println!("Copied file to new path");
-
-        let lib = unsafe { libloading::Library::new(&new_path).ok() }?;
-        println!("Loaded library");
-        Some(Self(Some(lib), new_path))
-    }
-    pub fn library(&self) -> Option<&Library> {
-        self.0.as_ref()
-    }
-}
-
 pub trait ReloadableResource: Resource + Serialize + DeserializeOwned + Default {
     fn get_type_name() -> &'static str;
 }

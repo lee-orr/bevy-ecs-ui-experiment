@@ -81,15 +81,7 @@ impl LibPathSet {
         })
     }
 
-    /// File path the compiler outputs to
-    pub fn lib_file_path(&self) -> PathBuf {
+    pub fn library_path(&self) -> PathBuf {
         self.folder.join(&self.name).with_extension(&self.extension)
-    }
-
-    /// File path copied to for hot reloads
-    pub fn hot_in_use_file_path(&self) -> PathBuf {
-        self.folder
-            .join(format!("{}_hot_in_use", self.name))
-            .with_extension(&self.extension)
     }
 }

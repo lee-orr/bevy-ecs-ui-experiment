@@ -1,9 +1,11 @@
 mod lib_set;
+mod library_holder;
 mod types;
 
 use std::thread;
 
 use bevy_hot_winit::HotWinitPlugin;
+use library_holder::LibraryHolder;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -22,15 +24,15 @@ pub use types::*;
 
 #[derive(Resource)]
 struct InternalHotReload {
-    pub library: Option<Arc<LibraryHolder>>,
-    pub last_lib: Option<Arc<LibraryHolder>>,
+    pub library: Option<LibraryHolder>,
+    pub last_lib: Option<LibraryHolder>,
     pub updated_this_frame: bool,
     pub last_update_time: Instant,
     pub libs: LibPathSet,
 }
 
-fn update_lib(library_paths: &LibPathSet) -> Option<Arc<LibraryHolder>> {
-    let lib_file_path = library_paths.lib_file_path();
+fn update_lib(library_paths: &LibPathSet) -> Option<LibraryHolder> {
+    let lib_file_path = library_paths.library_path();
 
     if lib_file_path.is_file() {
         println!("Found library {lib_file_path:?}");
@@ -38,7 +40,7 @@ fn update_lib(library_paths: &LibPathSet) -> Option<Arc<LibraryHolder>> {
             return None;
         };
         println!("Generated file holder");
-        Some(Arc::new(holder))
+        Some(holder)
     } else {
         None
     }
@@ -79,7 +81,7 @@ impl Drop for ChildGuard {
 }
 
 pub enum ReloadLibEvent {
-    UpdatedLib(Arc<LibraryHolder>),
+    UpdatedLib(LibraryHolder),
     Error(String),
 }
 
@@ -90,7 +92,7 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
     let library_paths = LibPathSet::new(&options).unwrap();
     println!("Paths: {library_paths:?}");
 
-    let _ = std::fs::remove_file(library_paths.lib_file_path());
+    let _ = std::fs::remove_file(library_paths.library_path());
 
     let (end_watch_tx, end_watch_rx) = crossbeam::channel::bounded::<EndWatch>(1);
     let (_reload_lib_tx, _reload_lib_rx) = crossbeam::channel::bounded::<ReloadLibEvent>(5);
@@ -146,7 +148,7 @@ pub fn run_reloadabe_app(options: HotReloadOptions) {
     let _ = end_watch_tx.send(EndWatch);
 }
 
-fn get_initial_library(library_paths: &LibPathSet) -> Arc<LibraryHolder> {
+fn get_initial_library(library_paths: &LibPathSet) -> LibraryHolder {
     loop {
         if let Some(library) = update_lib(library_paths) {
             println!("Update Thread: {:?}", std::thread::current().id());
