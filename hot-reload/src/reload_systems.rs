@@ -1,5 +1,8 @@
 use bevy::{
-    prelude::{Commands, EventWriter, Res, ResMut, Schedule, Schedules, World},
+    prelude::{
+        Commands, Component, DespawnRecursiveExt, Entity, EventWriter, Query, Res, ResMut,
+        Schedule, Schedules, With, World,
+    },
     utils::Instant,
 };
 
@@ -150,4 +153,14 @@ pub fn cleanup(
 
     commands.insert_resource(ReloadableAppContents::default());
     println!("Cleanup complete");
+}
+
+pub fn clear_marked_system<C: Component>(mut commands: Commands, q: Query<Entity, With<C>>) {
+    for entity in q.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+
+pub fn hot_reload_occured(reload: Res<InternalHotReload>) -> bool {
+    reload.updated_this_frame
 }

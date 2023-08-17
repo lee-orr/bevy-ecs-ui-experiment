@@ -2,6 +2,7 @@ mod hot_reload_internal;
 mod lib_set;
 mod library_holder;
 mod reload_systems;
+mod reloadable_app;
 mod reloadable_app_setup;
 mod replacable_types;
 mod schedules;
@@ -29,6 +30,7 @@ pub use reloadable_app_setup::*;
 
 use crate::hot_reload_internal::InternalHotReload;
 use crate::reload_systems::{cleanup, reload, update_lib_system};
+pub use crate::reloadable_app::{ReloadableApp, ReloadableAppCleanupData, ReloadableAppContents};
 pub use crate::replacable_types::{ReplacableComponent, ReplacableResource};
 use crate::replacable_types::{ReplacableComponentStore, ReplacableResourceStore};
 use crate::schedules::*;
