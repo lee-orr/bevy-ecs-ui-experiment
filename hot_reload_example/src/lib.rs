@@ -1,16 +1,15 @@
-use bevy::{prelude::*, winit::WinitPlugin};
+use bevy::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use hot_reload::{hot_bevy_main, hot_reload_setup, *};
 use serde::{Deserialize, Serialize};
 
 #[hot_bevy_main]
-pub fn bevy_main(reload: HotReloadPlugin) {
+pub fn bevy_main(initial: InitialPlugins) {
     println!("Creating app");
     let mut app = App::new();
     app.add_state::<AppState>()
-        .add_plugins(DefaultPlugins.build().disable::<WinitPlugin>())
+        .add_plugins(initial.with_default_plugins())
         .add_plugins(WorldInspectorPlugin::new())
-        .add_plugins(reload)
         .add_systems(Startup, setup)
         .setup_reloadable_elements::<reloadable>();
 

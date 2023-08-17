@@ -59,7 +59,9 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn hot_reload_internal_main(plugin: hot_reload::HotReloadPlugin) {
                 #ast
 
-                #fn_name(plugin);
+                let initial = hot_reload::InitialPlugins::new(plugin);
+
+                #fn_name(initial);
             }
         }
         .into();
@@ -71,7 +73,9 @@ pub fn hot_bevy_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
             pub fn #fn_name(options: hot_reload::HotReloadOptions) {
                 #ast
 
-                #fn_name(HotReloadPlugin);
+                let initial = hot_reload::InitialPlugins::new(HotReloadPlugin);
+
+                #fn_name(initial);
             }
         }
         .into();

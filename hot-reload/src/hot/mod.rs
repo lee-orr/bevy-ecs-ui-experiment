@@ -9,8 +9,6 @@ mod schedules;
 mod update_lib;
 mod watch;
 
-use bevy_hot_winit::HotWinitPlugin;
-
 use std::time::Duration;
 
 use bevy::ecs::prelude::*;
@@ -85,8 +83,7 @@ impl Plugin for HotReloadPlugin {
         let deserialize_schedule = Schedule::new();
         let reload_complete = Schedule::new();
 
-        app.add_plugins(HotWinitPlugin)
-            .add_schedule(SetupReload, reload_schedule)
+        app.add_schedule(SetupReload, reload_schedule)
             .add_schedule(CleanupReloaded, cleanup_schedule)
             .add_schedule(SerializeReloadables, serialize_schedule)
             .add_schedule(DeserializeReloadables, deserialize_schedule)
